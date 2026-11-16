@@ -3,7 +3,20 @@ if (showroom) {
   const bike = showroom.querySelector("#warehouse-bike");
   const status = showroom.querySelector("#finish-status");
   const finishes = [...showroom.querySelectorAll(".finish")];
+  const stage = showroom.querySelector(".warehouse-stage");
+  const viewCaption = showroom.querySelector("[data-view-caption]");
+  const viewDescription = showroom.querySelector("[data-view-description]");
+  const views = [...showroom.querySelectorAll(".workshop-controls button")];
   let selection = 0;
+
+  for (const button of views) {
+    button.addEventListener("click", () => {
+      stage.dataset.view = button.dataset.view;
+      viewCaption.textContent = button.dataset.caption;
+      viewDescription.textContent = button.dataset.description;
+      views.forEach((view) => view.setAttribute("aria-pressed", String(view === button)));
+    });
+  }
 
   for (const button of finishes) {
     button.addEventListener("click", async () => {

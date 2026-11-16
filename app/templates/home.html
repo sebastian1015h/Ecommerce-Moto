@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero" data-brand="KTM" aria-labelledby="hero-title">
   <img class="hero-photo hero-model" src="{{ url_for('static', path='images/models/duke-black.webp') }}" alt="KTM 390 Duke en negro" fetchpriority="high">
   <div class="shell hero-inner">
     <div class="hero-copy">
@@ -9,14 +9,14 @@
     </div>
     <div class="featured">
       <strong>KTM 390 Duke</strong>
-      <a href="{{ url_for('moto_detail', slug='ktm-390-duke') }}">Ver ficha <span aria-hidden="true">↗</span></a>
+      <a href="{{ url_for('moto_detail', slug='ktm-390-duke') }}">Entrar al taller <span aria-hidden="true">↗</span></a>
     </div>
   </div>
 </section>
 <nav class="brand-strip" aria-label="Explorar por marca">
   <div class="shell brand-list">
     {% for brand in brands %}
-    <a href="{{ url_for('catalog') }}?marca={{ brand }}">{{ brand }}</a>
+    <a data-brand="{{ brand }}" href="{{ url_for('catalog') }}?marca={{ brand }}">{{ brand }}</a>
     {% endfor %}
   </div>
 </nav>

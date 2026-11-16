@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.catalog.finishes import FINISHES
+from app.catalog.workshops import WORKSHOPS
 
 router = APIRouter(default_response_class=HTMLResponse)
 templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
@@ -121,5 +122,6 @@ def moto_detail(request: Request, slug: str):
         context={
             "brand": brand, "model": model, "category": category,
             "category_name": CATEGORIES[category], "finishes": finishes, "source": source,
+            "views": WORKSHOPS[slug],
         },
     )

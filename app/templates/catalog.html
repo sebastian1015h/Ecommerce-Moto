@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Catálogo de motos · Moto Garaje{% endblock %}
 {% block content %}
-<section class="shell page">
+<section class="shell page catalog-page"{% if brand_filter in brands %} data-brand="{{ brand_filter }}"{% endif %}>
   <h1>Catálogo de motos</h1>
   <p class="subtle">Selección de demostración con fotos de referencia del modelo.</p>
   <form class="filters" id="buscar" method="get" action="{{ url_for('catalog') }}">
@@ -24,9 +24,9 @@
   <p class="subtle">{{ motos|length }} {{ 'modelos' if motos|length != 1 else 'modelo' }}</p>
   <div class="product-grid">
     {% for slug, brand, model, category in motos %}
-    <a class="product" href="{{ url_for('moto_detail', slug=slug) }}">
+    <a class="product" data-brand="{{ brand }}" href="{{ url_for('moto_detail', slug=slug) }}">
       <img src="{{ url_for('static', path='images/models/' ~ finishes[slug][1][0][2] ~ '.webp') }}" alt="" loading="lazy">
-      <div><p>{{ brand }} · {{ categories[category] }}</p><h2>{{ model }}</h2><span>Ver ficha ↗</span></div>
+      <div><p>{{ brand }} · {{ categories[category] }}</p><h2>{{ model }}</h2><span>Explorar en el taller ↗</span></div>
     </a>
     {% endfor %}
   </div>

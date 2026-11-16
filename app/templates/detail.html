@@ -1,14 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}{{ brand }} {{ model }} · Moto Garaje{% endblock %}
 {% block content %}
-<section class="warehouse">
+<section class="warehouse" data-brand="{{ brand }}">
   <div class="shell warehouse-inner" data-showroom>
     <a class="text-link" href="{{ url_for('catalog') }}">← Catálogo</a>
     <div class="warehouse-grid">
-      <figure class="warehouse-stage">
-        <img id="warehouse-bike" src="{{ url_for('static', path='images/models/' ~ finishes[0][2] ~ '.webp') }}"
-             alt="{{ brand }} {{ model }} · {{ finishes[0][0] }}" data-model="{{ brand }} {{ model }}">
-      </figure>
+      <div class="workshop-display">
+        <figure class="warehouse-stage" data-view="full">
+          <figcaption class="workshop-caption"><span>{{ brand }} {{ model }}</span><span data-view-caption>Vista general</span></figcaption>
+          <div class="workshop-camera">
+            <img id="warehouse-bike" src="{{ url_for('static', path='images/models/' ~ finishes[0][2] ~ '.webp') }}"
+                 alt="{{ brand }} {{ model }} · {{ finishes[0][0] }}" data-model="{{ brand }} {{ model }}">
+          </div>
+        </figure>
+        <div class="workshop-inspect">
+          <div class="workshop-controls" role="group" aria-label="Vistas del taller">
+            <button type="button" data-view="full" data-caption="Vista general" data-description="Explora el perfil completo de la moto y selecciona un detalle para acercarte." aria-pressed="true">Vista general</button>
+            {% for name, description, position in views %}
+            <button type="button" data-view="{{ position }}" data-caption="{{ name }}" data-description="{{ description }}" aria-pressed="false">{{ name }}</button>
+            {% endfor %}
+          </div>
+          <p data-view-description role="status">Explora el perfil completo de la moto y selecciona un detalle para acercarte.</p>
+        </div>
+      </div>
       <div class="warehouse-info">
         <p class="warehouse-category">{{ brand }} · {{ category_name }}</p>
         <h1>{{ model }}</h1>
