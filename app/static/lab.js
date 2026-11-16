@@ -1,6 +1,8 @@
 const lab = document.querySelector("[data-lab]");
 const form = lab.querySelector("form");
 const method = form.elements.method;
+const dataset = form.elements.dataset;
+const modelId = form.elements.model_id;
 const query = form.elements.query;
 const note = form.elements.note;
 const submit = form.querySelector("button");
@@ -23,8 +25,28 @@ const timing = lab.querySelector("#trace-db-time");
 const clientPath = lab.querySelector("#trace-client-path");
 const requestPreview = lab.querySelector("#lab-request");
 const responseMeta = lab.querySelector("#trace-response-meta");
-const requestPath = () => method.value === "GET" ? "/api/laboratorio/inventario" : "/api/laboratorio/muestra";
+const stockSummary = lab.querySelector("#trace-stock-summary");
+const stockMode = () => method.value === "GET" && dataset.value === "stock";
+const contractKey = () => stockMode() ? "STOCK" : method.value;
+const requestPath = () => stockMode() ? "/api/laboratorio/stock-motos"
+  : method.value === "GET" ? "/api/laboratorio/inventario" : "/api/laboratorio/muestra";
 const writeMethods = ["POST", "PATCH"];
+const examples = {
+  stock: ["GET", ""],
+  ktm: ["GET", "ktm-390-duke"],
+  insert: ["POST", "KTM 390 Duke · muestra nueva"],
+  update: ["PATCH", "KTM 390 Duke · muestra actualizada"],
+  delete: ["DELETE", ""],
+};
+
+function requestUrl() {
+  const url = new URL(requestPath(), location.origin);
+  if (stockMode() && modelId.value) url.searchParams.set("modelo_id", modelId.value);
+  if (method.value === "GET" && !stockMode() && query.value.trim()) {
+    url.searchParams.set("q", query.value.trim());
+  }
+  return url;
+}
 
 function drawConnections() {
   const bounds = map.getBoundingClientRect();
@@ -82,11 +104,13 @@ function resetTrace() {
   labels[2].textContent = operation;
   lab.querySelector("#trace-send").textContent = writeMethods.includes(verb) ? `${verb} · JSON` : `${verb} · sin cuerpo`;
   lab.querySelector("#trace-receive").textContent = "Esperando respuesta HTTP";
-  lab.querySelector("#trace-table").textContent = verb === "GET" ? "inventory_motos" : "inventory_example · temporal";
+  lab.querySelector("#trace-table").textContent = stockMode() ? "moto_offers"
+    : verb === "GET" ? "inventory_motos" : "inventory_example · temporal";
   for (const key of ["branch", "database", "schema"]) {
     lab.querySelector(`#trace-${key}`).textContent = "Por verificar";
   }
   responseMeta.textContent = "Esperando respuesta";
+  stockSummary.hidden = true;
 }
 
 function travel(index, backwards = false, label) {
@@ -117,21 +141,27 @@ function travel(index, backwards = false, label) {
 }
 
 function updateControls() {
-  query.disabled = method.value !== "GET";
+  dataset.disabled = method.value !== "GET";
+  modelId.disabled = !stockMode();
+  query.disabled = method.value !== "GET" || stockMode();
   note.disabled = !writeMethods.includes(method.value);
   note.required = !note.disabled;
   lab.querySelector("#lab-query").hidden = query.disabled;
+  lab.querySelector("#lab-dataset").hidden = dataset.disabled;
+  lab.querySelector("#lab-model").hidden = modelId.disabled;
   lab.querySelector("#lab-payload").hidden = note.disabled;
-  lab.querySelector("#lab-path").textContent = requestPath();
+  const url = requestUrl();
+  lab.querySelector("#lab-path").textContent = url.pathname + url.search;
   const verb = method.value;
   const operation = operations[verb];
-  const repository = contracts.repositories[verb];
-  const route = `${verb} ${requestPath()}`;
-  lab.querySelector("#trace-handler").textContent = `${contracts.handlers[verb]}()`;
+  const key = contractKey();
+  const repository = contracts.repositories[key];
+  const route = `${verb} ${url.pathname}${url.search}`;
+  lab.querySelector("#trace-handler").textContent = `${contracts.handlers[key]}()`;
   lab.querySelector("#trace-route").textContent = route;
   const noteArgument = writeMethods.includes(verb) ? ", nota" : "";
   lab.querySelector("#trace-operation").textContent = verb === "GET"
-    ? `${repository}(q)`
+    ? `${repository}(${stockMode() ? "modelo_id" : "q"})`
     : `${repository}("${operation.toLowerCase()}"${noteArgument})`;
   const seedOperation = ["PATCH", "DELETE"].includes(verb) ? " → INSERT de muestra" : "";
   lab.querySelector("#trace-driver").textContent = verb === "GET"
@@ -140,25 +170,41 @@ function updateControls() {
   lab.querySelector("#trace-db-operation").textContent = verb === "GET" ? "SELECT · lectura" : `${operation} · tabla temporal, eliminada al hacer COMMIT`;
   clientPath.textContent = route;
   requestPreview.textContent = route;
-  sql.textContent = `${contracts.sql[verb]};`;
+  sql.textContent = `${contracts.sql[key]};`;
   status.textContent = "Listo para enviar";
   output.textContent = "—";
   resetTrace();
 }
 
 method.addEventListener("change", updateControls);
+dataset.addEventListener("change", updateControls);
+modelId.addEventListener("change", updateControls);
+for (const button of lab.querySelectorAll("[data-lab-example]")) {
+  button.addEventListener("click", () => {
+    if (submit.disabled) return;
+    const [verb, value] = examples[button.dataset.labExample];
+    method.value = verb;
+    if (verb === "GET") {
+      dataset.value = "stock";
+      modelId.value = value;
+    } else if (writeMethods.includes(verb)) {
+      note.value = value;
+    }
+    updateControls();
+  });
+}
 updateControls();
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (submit.disabled) return;
   const verb = method.value;
-  const url = new URL(requestPath(), location.origin);
+  const url = requestUrl();
   const options = { method: verb, cache: "no-store", signal: AbortSignal.timeout(15000) };
   if (!note.disabled) {
     options.headers = { "Content-Type": "application/json" };
     options.body = JSON.stringify({ nota: note.value });
   }
-  if (verb === "GET" && query.value.trim()) url.searchParams.set("q", query.value.trim());
+  const isStock = stockMode();
   clientPath.textContent = `${verb} ${url.pathname}${url.search}`;
   requestPreview.textContent = options.body
     ? `${clientPath.textContent}\nContent-Type: application/json\n\n${JSON.stringify(JSON.parse(options.body), null, 2)}`
@@ -166,6 +212,8 @@ form.addEventListener("submit", async (event) => {
   resetTrace();
   submit.disabled = true;
   method.disabled = true;
+  dataset.disabled = true;
+  modelId.disabled = true;
   query.readOnly = true;
   note.readOnly = true;
   output.textContent = "—";
@@ -228,13 +276,22 @@ form.addEventListener("submit", async (event) => {
     responseMeta.textContent = received;
     lab.querySelector("#trace-receive").textContent = received;
     try {
-      output.textContent = body ? JSON.stringify(JSON.parse(body), null, 2) : "Sin cuerpo";
+      const payload = body ? JSON.parse(body) : null;
+      output.textContent = payload === null ? "Sin cuerpo" : JSON.stringify(payload, null, 2);
+      if (isStock && response.ok && payload) {
+        const units = payload.unidades_disponibles;
+        const models = payload.modelos_encontrados;
+        stockSummary.textContent = `${units} ${units === 1 ? "moto disponible" : "motos disponibles"} · ${models} ${models === 1 ? "modelo" : "modelos"}`;
+        stockSummary.hidden = false;
+      }
     } catch {
       output.textContent = body;
     }
   } finally {
     submit.disabled = false;
     method.disabled = false;
+    dataset.disabled = verb !== "GET";
+    modelId.disabled = !isStock;
     query.readOnly = false;
     note.readOnly = false;
   }

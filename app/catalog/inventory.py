@@ -16,6 +16,13 @@ WHERE strpos(lower(marca || ' ' || modelo), lower(:query)) > 0
 ORDER BY created_at DESC
 LIMIT 500"""
 
+STOCK_QUERY = """SELECT offer.slug AS modelo_id, model.marca, model.modelo,
+       offer.color, offer.stock
+FROM moto_offers AS offer
+LEFT JOIN inventory_motos AS model ON model.slug = offer.slug
+WHERE CAST(:modelo_id AS text) IS NULL OR offer.slug = :modelo_id
+ORDER BY offer.slug, offer.color"""
+
 EXAMPLE_QUERIES = {
     "insert": "INSERT INTO inventory_example VALUES (1, :value)\nRETURNING modelo",
     "update": "UPDATE inventory_example SET modelo = :value\nWHERE id = 1 RETURNING modelo",
@@ -76,6 +83,16 @@ def lookup_moto(slug):
             SELECT slug, marca, modelo, categoria, color, specs FROM inventory_motos WHERE slug = :slug
         """), {"slug": slug}).mappings().first()
         return dict(row) if row else None
+
+
+def list_moto_stock(modelo_id=None, *, target=None):
+    with database_engine().connect() as connection:
+        rows = [
+            dict(row) for row in connection.execute(text(STOCK_QUERY), {"modelo_id": modelo_id}).mappings()
+        ]
+        if target is not None:
+            describe_target(connection, "moto_offers", target)
+        return rows
 
 
 def prepare_image(raw):

@@ -4,7 +4,7 @@ from pathlib import Path
 from time import perf_counter
 
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image, UnidentifiedImageError
@@ -113,6 +113,26 @@ def read_inventory(response: Response, q: str = ""):
     return trace_lab_query(response, inventory.list_inventory, q.strip())
 
 
+@api.get("/laboratorio/stock-motos", tags=["Laboratorio"])
+def read_moto_stock(response: Response, modelo_id: str | None = Query(default=None, max_length=80)):
+    """Devuelve unidades disponibles por acabado y el total, con filtro opcional por identificador."""
+    rows = trace_lab_query(response, inventory.list_moto_stock, modelo_id)
+    models = {}
+    for row in rows:
+        slug = row["modelo_id"]
+        brand, model, _ = MOTOS.get(slug, (row["marca"], row["modelo"], None))
+        entry = models.setdefault(slug, {
+            "modelo_id": slug, "marca": brand, "modelo": model, "unidades_disponibles": 0, "acabados": [],
+        })
+        entry["unidades_disponibles"] += row["stock"]
+        entry["acabados"].append({"color": row["color"], "unidades_disponibles": row["stock"]})
+    return {
+        "modelo_id": modelo_id, "modelos_encontrados": len(models),
+        "unidades_disponibles": sum(entry["unidades_disponibles"] for entry in models.values()),
+        "modelos": list(models.values()),
+    }
+
+
 @api.post("/laboratorio/muestra", status_code=201, tags=["Laboratorio"])
 def example_create(note: DemoNote, response: Response):
     """Ejecuta INSERT en una tabla temporal de PostgreSQL."""
@@ -138,22 +158,26 @@ def lab(request: Request):
     return templates.TemplateResponse(request=request, name="lab.html", context={
         "statements": {
             "GET": inventory.INVENTORY_QUERY,
+            "STOCK": inventory.STOCK_QUERY,
             "POST": inventory.EXAMPLE_QUERIES["insert"],
             "PATCH": inventory.EXAMPLE_QUERIES["update"],
             "DELETE": inventory.EXAMPLE_QUERIES["delete"],
         },
         "handlers": {
             "GET": read_inventory.__name__,
+            "STOCK": read_moto_stock.__name__,
             "POST": example_create.__name__,
             "PATCH": example_update.__name__,
             "DELETE": example_delete.__name__,
         },
         "repositories": {
             "GET": inventory.list_inventory.__name__,
+            "STOCK": inventory.list_moto_stock.__name__,
             "POST": inventory.inventory_example.__name__,
             "PATCH": inventory.inventory_example.__name__,
             "DELETE": inventory.inventory_example.__name__,
         },
+        "motos": MOTOS,
     })
 
 

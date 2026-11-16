@@ -21,15 +21,37 @@
           <option value="DELETE">DELETE · Eliminar muestra</option>
         </select>
       </label>
-      <code id="lab-path">/api/laboratorio/inventario</code>
-      <label id="lab-query">Buscar modelo
+      <label id="lab-dataset">Consulta GET
+        <select name="dataset">
+          <option value="stock">Existencias por modelo y color</option>
+          <option value="inventory">Modelos registrados en Gerencia</option>
+        </select>
+      </label>
+      <label id="lab-model">Identificador del modelo
+        <select name="model_id">
+          <option value="">Todos los modelos</option>
+          {% for slug, (brand, model, category) in motos.items() %}
+          <option value="{{ slug }}">{{ brand }} {{ model }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <code id="lab-path">/api/laboratorio/stock-motos</code>
+      <label id="lab-query" hidden>Buscar modelo
         <input name="query" placeholder="Ej. Duke" maxlength="100">
       </label>
       <label id="lab-payload" hidden>Nota de prueba
         <input name="note" maxlength="140" value="Moto de demostración" disabled>
       </label>
       <button class="button" type="submit">Enviar petición →</button>
-      <p>GET lee el inventario de Gerencia. POST, PATCH y DELETE trabajan en una tabla temporal.</p>
+      <div class="lab-examples" role="group" aria-label="Ejemplos de peticiones">
+        <strong>Ejemplos para probar</strong>
+        <button type="button" data-lab-example="stock">Ver stock total</button>
+        <button type="button" data-lab-example="ktm">Ver stock de la KTM 390 Duke</button>
+        <button type="button" data-lab-example="insert">Insertar una muestra</button>
+        <button type="button" data-lab-example="update">Actualizar una muestra</button>
+        <button type="button" data-lab-example="delete">Eliminar una muestra</button>
+      </div>
+      <p>Las consultas GET leen datos de Neon. Las escrituras de ejemplo usan una tabla temporal.</p>
     </form>
     <section class="lab-panel lab-trace" aria-labelledby="lab-trace-title">
       <header class="trace-header">
@@ -56,7 +78,7 @@
             <div><h3>Navegador</h3><span>Cliente HTTP</span></div>
           </div>
           <p data-node-detail>Prepara la petición</p>
-          <code id="trace-client-path">GET /api/laboratorio/inventario</code>
+          <code id="trace-client-path">GET /api/laboratorio/stock-motos</code>
           <dl class="trace-facts">
             <div><dt>Envía</dt><dd id="trace-send">GET · parámetros en la URL</dd></div>
             <div><dt>Recibe</dt><dd id="trace-receive">Código HTTP y respuesta</dd></div>
@@ -68,9 +90,9 @@
             <div><h3>FastAPI</h3><span>Servidor de aplicación</span></div>
           </div>
           <p data-node-detail>Valida y dirige la petición</p>
-          <code id="trace-handler">read_inventory()</code>
+          <code id="trace-handler">read_moto_stock()</code>
           <dl class="trace-facts">
-            <div><dt>Ruta</dt><dd id="trace-route">GET /api/laboratorio/inventario</dd></div>
+            <div><dt>Ruta</dt><dd id="trace-route">GET /api/laboratorio/stock-motos</dd></div>
             <div><dt>Módulo</dt><dd>app/catalog/router.py</dd></div>
           </dl>
         </article>
@@ -80,7 +102,7 @@
             <div><h3>Repositorio</h3><span>SQLAlchemy</span></div>
           </div>
           <p data-node-detail>Envía SQL con parámetros</p>
-          <code id="trace-operation">list_inventory()</code>
+          <code id="trace-operation">list_moto_stock(modelo_id)</code>
           <dl class="trace-facts">
             <div><dt>Repositorio</dt><dd>app/catalog/inventory.py</dd></div>
             <div><dt>Llama</dt><dd id="trace-driver">connect() → execute(SELECT)</dd></div>
@@ -92,7 +114,7 @@
             <div><h3>Neon</h3><span>Base de datos PostgreSQL</span></div>
           </div>
           <p data-node-detail>Espera una consulta</p>
-          <code id="trace-table">inventory_motos</code>
+          <code id="trace-table">moto_offers</code>
           <dl class="trace-facts">
             <div><dt>Rama configurada</dt><dd id="trace-branch">Por verificar</dd></div>
             <div><dt>Base</dt><dd id="trace-database">Por verificar</dd></div>
@@ -109,15 +131,16 @@
       <div class="trace-inspection">
         <section aria-labelledby="request-title">
           <h3 id="request-title">Solicitud HTTP</h3>
-          <pre id="lab-request" tabindex="0">GET /api/laboratorio/inventario</pre>
+          <pre id="lab-request" tabindex="0">GET /api/laboratorio/stock-motos</pre>
         </section>
         <section aria-labelledby="sql-title">
           <h3 id="sql-title">Sentencia SQL</h3>
-          <pre id="lab-sql" tabindex="0">{{ statements.GET }};</pre>
+          <pre id="lab-sql" tabindex="0">{{ statements.STOCK }};</pre>
         </section>
         <section aria-labelledby="response-title">
           <h3 id="response-title">Respuesta HTTP</h3>
           <p id="trace-response-meta" class="trace-response-meta">Esperando respuesta</p>
+          <p id="trace-stock-summary" class="trace-stock-summary" hidden></p>
           <pre id="lab-response" aria-label="Cuerpo de la respuesta" tabindex="0">—</pre>
         </section>
       </div>
