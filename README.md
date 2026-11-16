@@ -17,7 +17,17 @@ npm run build
 .\.venv\Scripts\python.exe smoke_test.py
 ```
 
-En `/laboratorio` puedes consultar el catálogo y probar escrituras simuladas. Los endpoints de muestra responden a POST, PATCH y DELETE sin guardar datos. Swagger UI está en `/docs`.
+En `/laboratorio`, GET consulta las motos guardadas en Neon. POST, PATCH y DELETE ejecutan SQL sobre una tabla temporal que se elimina al cerrar la transacción. Swagger UI está en `/docs`.
+
+## Inventario de Gerencia
+
+Con `DATABASE_URL_UNPOOLED` disponible, aplica la migración una vez por base de datos:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.catalog.inventory
+```
+
+En `/gerencia` puedes registrar motos y fotos. PostgreSQL guarda el modelo y Neon Object Storage almacena la foto optimizada en WebP. El visor de la KTM usa cinco ángulos oficiales. Las otras fichas enlazan a visores externos cuando están disponibles. Gerencia se abre sin contraseña, por lo que cualquier visitante con acceso a la instancia puede subir modelos.
 
 ## Despliegue en Render
 

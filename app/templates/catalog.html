@@ -25,7 +25,11 @@
   <div class="product-grid">
     {% for slug, brand, model, category in motos %}
     <a class="product" data-brand="{{ brand }}" href="{{ url_for('moto_detail', slug=slug) }}">
+      {% if slug in finishes %}
       <img src="{{ url_for('static', path='images/models/' ~ finishes[slug][1][0][2] ~ '.webp') }}" alt="" loading="lazy">
+      {% else %}
+      <img src="{{ url_for('inventory_photo', slug=slug) }}" alt="" loading="lazy">
+      {% endif %}
       <div><p>{{ brand }} · {{ categories[category] }}</p><h2>{{ model }}</h2><span>Explorar en el taller ↗</span></div>
     </a>
     {% endfor %}

@@ -11,13 +11,13 @@
       <h2>Petición</h2>
       <label>Método
         <select name="method">
-          <option value="GET">GET · Consultar catálogo</option>
-          <option value="POST">POST · Simular creación</option>
-          <option value="PATCH">PATCH · Simular actualización</option>
-          <option value="DELETE">DELETE · Simular eliminación</option>
+          <option value="GET">GET · Consultar inventario</option>
+          <option value="POST">POST · Insertar muestra</option>
+          <option value="PATCH">PATCH · Actualizar muestra</option>
+          <option value="DELETE">DELETE · Eliminar muestra</option>
         </select>
       </label>
-      <code id="lab-path">/api/motos</code>
+      <code id="lab-path">/api/laboratorio/inventario</code>
       <label id="lab-query">Buscar modelo
         <input name="query" placeholder="Ej. Duke" maxlength="100">
       </label>
@@ -25,16 +25,20 @@
         <input name="note" maxlength="140" value="Moto de demostración" disabled>
       </label>
       <button class="button" type="submit">Enviar petición →</button>
-      <p>Las escrituras del laboratorio se simulan sin persistencia.</p>
+      <p>GET consulta las motos registradas en Gerencia. Los otros métodos usan una tabla temporal de Neon.</p>
     </form>
     <div class="lab-panel lab-console">
       <h2>Recorrido y respuesta</h2>
       <ol class="api-flow" aria-label="Recorrido de la petición">
         <li data-step="0">Navegador</li>
         <li data-step="1">FastAPI</li>
-        <li data-step="2" id="lab-handler">Consulta</li>
+        <li data-step="2" id="lab-handler">Neon · SELECT</li>
         <li data-step="3">Respuesta</li>
       </ol>
+      <p class="lab-sql-label">Ejemplo de SQL</p>
+      <pre id="lab-sql">SELECT slug, marca, modelo, categoria, color
+FROM inventory_motos
+ORDER BY created_at DESC LIMIT 500;</pre>
       <p id="lab-status" role="status">Esperando una petición.</p>
       <pre id="lab-response" aria-label="Cuerpo de la respuesta" tabindex="0">—</pre>
     </div>

@@ -2,7 +2,7 @@
 FINISHES = {
     "ktm-390-duke": (
         "https://www.ktm.com/es-co/models/naked-bike/2026-ktm-390-duke.html",
-        (("Negro", "#28282b", "duke-black"), ("Azul", "#215291", "duke-blue")),
+        (("Negro", "#28282b", "duke-black-front-right"), ("Azul", "#215291", "duke-blue")),
     ),
     "suzuki-gixxer-250": (
         "https://www.suzuki.com.co/motocicletas/sport/gixxer-250",
@@ -25,4 +25,13 @@ FINISHES = {
         "https://www.suzuki.com.co/motocicletas/aventura/v-strom-250-sx",
         (("Amarillo", "#ffde00", "vstrom-yellow"), ("Negro", "#292a2c", "vstrom-black")),
     ),
+}
+
+# External viewers can show finishes from their respective markets.
+VIEWERS = {
+    "suzuki-gixxer-250": ("Abrir visor 360° en BikeDekho", "https://www.bikedekho.com/suzuki/gixxer-250/images"),
+    "honda-pcx-160": ("Abrir visor 3D de Honda", "https://motos.honda.com.co/PCX-160-2026"),
+    "yamaha-nmax": ("Abrir visor 360° de Yamaha", "https://www.yamaha-motor.co.jp/mc/lineup/nmax155/"),
+    "kawasaki-ninja-zx-4rr": ("Abrir visor 360° de Kawasaki", "https://www.kawasaki.com.au/en-au/motorcycle/ninja/supersport/ninja-zx-4r/2026-ninja-zx-4rr"),
+    "suzuki-v-strom-250-sx": ("Abrir visor 360° de Suzuki", "https://mc.suzuki.com.ph/motorcycles/backbone/v-strom-250-sx/"),
 }

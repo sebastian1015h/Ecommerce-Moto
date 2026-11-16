@@ -7,7 +7,44 @@ if (showroom) {
   const viewCaption = showroom.querySelector("[data-view-caption]");
   const viewDescription = showroom.querySelector("[data-view-description]");
   const views = [...showroom.querySelectorAll(".workshop-controls button")];
+  const angleViewer = showroom.querySelector("[data-angles]");
+  const angleRange = angleViewer?.querySelector("input");
+  const angleLabel = angleViewer?.querySelector("[data-angle-label]");
+  const angles = [...(angleViewer?.querySelectorAll("[data-angle]") ?? [])];
   let selection = 0;
+
+  async function displayPhoto(url, label) {
+    const request = ++selection;
+    const preview = new Image();
+    preview.src = url;
+    try {
+      await preview.decode();
+    } catch {
+      if (request === selection) status.textContent = "La imagen no pudo cargarse.";
+      return false;
+    }
+    if (request !== selection) return false;
+    bike.src = preview.src;
+    bike.alt = `${bike.dataset.model} · ${label}`;
+    bike.getAnimations().forEach((animation) => animation.cancel());
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      bike.animate([{ opacity: .35, transform: "translateX(8px)" }, { opacity: 1, transform: "none" }], 240);
+    }
+    return true;
+  }
+
+  function labelAngle(angle) {
+    angleLabel.textContent = angle.dataset.angle;
+    angleRange.setAttribute("aria-valuetext", angle.dataset.angle);
+  }
+
+  angleRange?.addEventListener("input", async () => {
+    const angle = angles[Number(angleRange.value)];
+    if (await displayPhoto(angle.dataset.image, angle.dataset.angle)) {
+      views[0].click();
+      labelAngle(angle);
+    }
+  });
 
   for (const button of views) {
     button.addEventListener("click", () => {
@@ -20,23 +57,19 @@ if (showroom) {
 
   for (const button of finishes) {
     button.addEventListener("click", async () => {
-      const request = ++selection;
-      const preview = new Image();
-      preview.src = button.dataset.image;
-      try {
-        await preview.decode();
-      } catch {
-        if (request === selection) status.textContent = "La imagen no pudo cargarse.";
+      if (angleRange) angleRange.disabled = true;
+      const changed = await displayPhoto(button.dataset.image, button.dataset.color);
+      if (!changed) {
+        if (angleRange) angleRange.disabled = angleViewer.hidden;
         return;
       }
-      if (request !== selection) return;
-      bike.src = preview.src;
-      bike.alt = `${bike.dataset.model} · ${button.dataset.color}`;
       status.textContent = `Acabado: ${button.dataset.color}`;
       finishes.forEach((finish) => finish.setAttribute("aria-pressed", String(finish === button)));
-      bike.getAnimations().forEach((animation) => animation.cancel());
-      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        bike.animate([{ opacity: .35, transform: "translateX(8px)" }, { opacity: 1, transform: "none" }], 300);
+      if (angleRange) {
+        angleViewer.hidden = button !== finishes[0];
+        angleRange.disabled = angleViewer.hidden;
+        angleRange.value = 0;
+        labelAngle(angles[0]);
       }
     });
   }
@@ -51,9 +84,16 @@ if (lab) {
   const submit = form.querySelector("button");
   const status = lab.querySelector("#lab-status");
   const output = lab.querySelector("#lab-response");
+  const sql = lab.querySelector("#lab-sql");
   const steps = [...lab.querySelectorAll("[data-step]")];
-  const actions = { GET: "Consulta", POST: "Creación de muestra", PATCH: "Edición de muestra", DELETE: "Eliminación de muestra" };
-  const requestPath = () => method.value === "GET" ? "/api/motos" : "/api/laboratorio/muestra";
+  const actions = { GET: "Neon · SELECT", POST: "Neon · INSERT", PATCH: "Neon · UPDATE", DELETE: "Neon · DELETE" };
+  const sqlExamples = {
+    GET: "SELECT slug, marca, modelo, categoria, color\nFROM inventory_motos\nORDER BY created_at DESC LIMIT 500;",
+    POST: "INSERT INTO inventory_example VALUES (1, :value)\nRETURNING modelo;",
+    PATCH: "UPDATE inventory_example SET modelo = :value\nWHERE id = 1 RETURNING modelo;",
+    DELETE: "DELETE FROM inventory_example\nWHERE id = 1 RETURNING modelo;",
+  };
+  const requestPath = () => method.value === "GET" ? "/api/laboratorio/inventario" : "/api/laboratorio/muestra";
   const setStep = (index) => {
     steps.forEach((step, i) => {
       step.classList.toggle("completed", i < index);
@@ -71,6 +111,7 @@ if (lab) {
     lab.querySelector("#lab-payload").hidden = note.disabled;
     lab.querySelector("#lab-path").textContent = requestPath();
     steps[2].textContent = actions[method.value];
+    sql.textContent = sqlExamples[method.value];
     setStep(-1);
   }
 

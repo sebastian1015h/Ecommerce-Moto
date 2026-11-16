@@ -9,10 +9,11 @@
         <figure class="warehouse-stage" data-view="full">
           <figcaption class="workshop-caption"><span>{{ brand }} {{ model }}</span><span data-view-caption>Vista general</span></figcaption>
           <div class="workshop-camera">
-            <img id="warehouse-bike" src="{{ url_for('static', path='images/models/' ~ finishes[0][2] ~ '.webp') }}"
-                 alt="{{ brand }} {{ model }} · {{ finishes[0][0] }}" data-model="{{ brand }} {{ model }}">
+            <img id="warehouse-bike" src="{{ uploaded_photo or url_for('static', path='images/models/' ~ finishes[0][2] ~ '.webp') }}"
+                 alt="{{ brand }} {{ model }} · {{ uploaded_color or finishes[0][0] }}" data-model="{{ brand }} {{ model }}">
           </div>
         </figure>
+        {% if views %}
         <div class="workshop-inspect">
           <div class="workshop-controls" role="group" aria-label="Vistas del taller">
             <button type="button" data-view="full" data-caption="Vista general" data-description="Explora el perfil completo de la moto y selecciona un detalle para acercarte." aria-pressed="true">Vista general</button>
@@ -22,10 +23,22 @@
           </div>
           <p data-view-description role="status">Explora el perfil completo de la moto y selecciona un detalle para acercarte.</p>
         </div>
+        {% endif %}
+        {% if angles %}
+        <div class="angle-viewer" data-angles>
+          <label for="angle-range">Visor de ángulos · acabado negro</label>
+          <input type="range" id="angle-range" min="0" max="{{ angles|length - 1 }}" step="1" value="0" aria-valuetext="{{ angles[0][0] }}">
+          <span data-angle-label>{{ angles[0][0] }}</span>
+          {% for name, asset in angles %}
+          <span hidden data-angle="{{ name }}" data-image="{{ url_for('static', path='images/models/' ~ asset ~ '.webp') }}"></span>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
       <div class="warehouse-info">
         <p class="warehouse-category">{{ brand }} · {{ category_name }}</p>
         <h1>{{ model }}</h1>
+        {% if finishes %}
         <fieldset class="finish-picker">
           <legend>Acabado</legend>
           {% for label, hex, asset in finishes %}
@@ -36,9 +49,13 @@
           </button>
           {% endfor %}
         </fieldset>
+        {% else %}
+        <p><strong>Acabado</strong> · {{ uploaded_color }}</p>
+        {% endif %}
         <p id="finish-status" class="visually-hidden" role="status"></p>
         <p class="warehouse-note">Ficha de demostración. Precio y disponibilidad pendientes de confirmación.</p>
-        <a class="text-link" href="{{ source }}">Ver ficha de referencia ↗</a>
+        {% if viewer %}<p class="warehouse-viewer"><a class="text-link" href="{{ viewer[1] }}">{{ viewer[0] }} ↗</a></p>{% endif %}
+        {% if source %}<a class="text-link" href="{{ source }}">Ver ficha de referencia ↗</a>{% endif %}
       </div>
     </div>
   </div>

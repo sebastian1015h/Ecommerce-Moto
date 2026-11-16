@@ -177,6 +177,17 @@ figcaption { font-size: .85rem; margin-top: 8px; }
 .workshop-controls button { min-height: 42px; padding: 6px 10px; background: transparent; color: var(--ink); border: 1px solid transparent; border-radius: 4px; font: 700 .83rem Inter, sans-serif; cursor: pointer; }
 .workshop-controls button:hover, .workshop-controls button[aria-pressed="true"] { background: #ece7de; border-bottom-color: var(--brand); }
 .workshop-inspect p { margin-top: 9px; color: var(--muted); font-size: .88rem; line-height: 1.45; }
+.angle-viewer { display: grid; gap: 7px; padding: 14px 18px; margin-top: 10px; background: #fffdf8; border: 1px solid var(--line); border-radius: 8px; }
+.angle-viewer[hidden] { display: none; }
+.angle-viewer label { font-weight: 700; font-size: .88rem; }
+.angle-viewer input { width: 100%; accent-color: #65543f; }
+.angle-viewer > span { color: var(--muted); font-size: .83rem; }
+.warehouse-viewer { margin-bottom: 12px; }
+.manager-form { max-width: 740px; margin-top: 22px; }
+.manager-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.manager-form input[type="file"] { padding-block: 8px; }
+.manager-form .button { justify-self: start; }
+.manager-form .form-error { color: #8b232a; font-weight: 700; }
 .warehouse-info { padding-top: clamp(10px, 5vw, 62px); }
 .warehouse-info h1 { font-size: clamp(3.8rem, 8vw, 7.6rem); margin-block: 6px 20px; }
 .warehouse-category { font-size: .84rem; color: #39342d; border-left: 3px solid var(--brand); padding-left: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .09em; }
@@ -206,6 +217,8 @@ figcaption { font-size: .85rem; margin-top: 8px; }
 .api-flow li.completed::after { border-color: var(--warm); }
 #lab-status { font-size: .88rem; color: #e2d4bc; overflow-wrap: anywhere; }
 #lab-response { max-height: 290px; min-height: 135px; overflow: auto; padding: 14px; border-radius: 4px; background: #111215; color: #e6e7ec; font-size: .84rem; }
+.lab-sql-label { font-size: .8rem; color: #eee4d6; font-weight: 700; }
+#lab-sql { max-width: 100%; overflow-x: auto; padding: 10px 12px; border-left: 2px solid var(--warm); background: #27292e; color: #eee4d6; font-size: .78rem; }
 @keyframes enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes light-step { from { box-shadow: 0 0 0 4px #bca78560; } to { box-shadow: 0 0 0 0 #bca78500; } }
 @keyframes workshop-light { from { opacity: .3; } to { opacity: 1; } }
@@ -234,10 +247,12 @@ figcaption { font-size: .85rem; margin-top: 8px; }
   .warehouse-stage img { width: 84%; height: clamp(245px, 52vw, 430px); }
 }
 @media (max-width: 560px) {
-  .nav { grid-template-columns: 1fr auto auto; gap: 7px; }
+  .nav { grid-template-columns: 1fr auto; gap: 0 7px; min-height: 82px; padding-top: 3px; }
   .nav .wordmark { font-size: 1.05rem; }
-  .nav nav { gap: 7px; }
+  .nav nav { grid-column: 1 / -1; grid-row: 2; gap: 16px; }
   .nav nav a { font-size: .73rem; padding-inline: 1px; }
+  .nav .search { grid-column: 2; grid-row: 1; }
+  .manager-fields { grid-template-columns: 1fr; }
   .hero-model { top: 165px; right: 2%; width: 96%; height: 59%; padding: 0; }
   .lab-grid { grid-template-columns: 1fr; }
   .api-flow { gap: 8px; }
