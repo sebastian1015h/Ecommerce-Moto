@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Entrega y pedido · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page gear-checkout">
+  <a class="text-link" href="{{ url_for('accessory_cart') }}">← Carrito</a>
+  <h1>Entrega y pedido</h1>
+  {% if error %}<p class="gear-error" role="alert">{{ error }}</p>{% endif %}
+  {% if lines and not has_shortage %}
+  <form method="post" action="{{ url_for('accessory_checkout_submit') }}" class="gear-cart-grid" data-checkout data-merchandise="{{ total }}">
+    <section class="checkout-contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">Datos de entrega</h2>
+      <div class="checkout-fields">
+        <label>Nombre completo<input name="customer_name" autocomplete="name" maxlength="100" value="{{ values.customer_name or '' }}" required></label>
+        <label>Correo<input type="email" name="email" autocomplete="email" maxlength="150" value="{{ values.email or '' }}" required></label>
+        <label>Teléfono<input type="tel" name="phone" autocomplete="tel" maxlength="30" value="{{ values.phone or '' }}" required></label>
+        <label>Ciudad<input name="city" autocomplete="address-level2" maxlength="100" value="{{ values.city or '' }}" required></label>
+        <label class="checkout-address">Dirección de entrega<input name="address" autocomplete="street-address" maxlength="200" value="{{ values.address or '' }}" required></label>
+        <label class="checkout-address">Zona de envío
+          <select name="zone">
+            {% for key, (label, amount) in zones.items() %}
+            <option value="{{ key }}" data-shipping="{{ amount }}" {% if key == zone %}selected{% endif %}>{{ label }} · {{ price(amount) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <input type="hidden" name="expected_total" value="{{ checkout_total }}">
+      <input type="hidden" name="order_id" value="{{ order_id }}">
+    </section>
+    <aside class="gear-summary">
+      <h2>Resumen del pedido</h2>
+      <ul class="checkout-items">
+        {% for line in lines %}
+        <li>{{ line.qty }} × {{ line.product.name }}{% if line.product.variant != 'Única' %} · {{ line.product.variant }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+      <dl class="gear-totals" aria-live="polite">
+        <div><dt>Subtotal sin IVA</dt><dd>{{ price(subtotal) }}</dd></div>
+        <div><dt>IVA de accesorios</dt><dd>{{ price(iva) }}</dd></div>
+        <div><dt>Envío</dt><dd data-checkout-shipping>{{ price(shipping) }}</dd></div>
+        <div class="gear-summary-total"><dt>Total</dt><dd><strong data-checkout-total>{{ price(checkout_total) }} COP</strong></dd></div>
+      </dl>
+      <p class="subtle">Envío con tarifa de demostración. El pedido queda pendiente de pago.</p>
+      <button class="button" type="submit">Confirmar pedido →</button>
+    </aside>
+  </form>
+  {% else %}
+  <p>{{ 'Ajusta el carrito al stock disponible.' if has_shortage else 'Agrega un accesorio para iniciar un pedido.' }}</p>
+  <a class="button" href="{{ url_for('accessory_cart') }}">Revisar carrito</a>
+  {% endif %}
+</section>
+{% endblock %}

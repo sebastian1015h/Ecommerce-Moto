@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Pedido de moto registrado · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page">
+  <div class="checkout-contact order-receipt">
+    <p class="gear-category">Pedido {{ reference }}</p>
+    <h1>Pedido de moto registrado</h1>
+    <p>Una unidad apartada en el inventario de demostración. Pendiente de pago y retiro por coordinar.</p>
+    <ul class="checkout-items">
+      <li>{{ order.brand }} {{ order.model }}</li>
+      <li>Acabado {{ order.color }}</li>
+    </ul>
+    <dl class="gear-totals">
+      <div class="gear-summary-total"><dt>Total de referencia</dt><dd><strong>{{ price(order.price_cop) }} COP</strong></dd></div>
+    </dl>
+    <a class="button" href="{{ url_for('moto_detail', slug=order.slug) }}">Volver a la ficha ↗</a>
+  </div>
+</section>
+{% endblock %}

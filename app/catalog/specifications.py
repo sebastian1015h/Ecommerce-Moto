@@ -1,0 +1,50 @@
+# Specs are tied to the model year and market named in the corresponding source.
+SPECIFICATIONS = {
+    "ktm-390-duke": ("2026 · Colombia",
+        "https://www.ktm.com/es-co/models/naked-bike/2026-ktm-390-duke/especificaciones-tecnicas.html", {
+            "Cilindraje": "398,7 cm³", "Motor": "Monocilíndrico de 4 tiempos",
+            "Potencia": "45 PS", "Torque": "39 Nm", "Transmisión": "6 marchas",
+            "Refrigeración": "Líquida", "Frenos": "Disco delantero 320 mm y trasero 240 mm",
+            "Altura del asiento": "820 / 800 mm", "Peso con tanque lleno": "165 kg",
+        }),
+    "suzuki-gixxer-250": ("2027 · Colombia",
+        "https://www.suzuki.com.co/motocicletas/sport/gixxer-250", {
+            "Cilindraje": "249 cm³", "Motor": "Monocilíndrico de 4 tiempos",
+            "Potencia": "26,1 HP a 9.000 rpm", "Torque": "22 Nm a 7.300 rpm",
+            "Transmisión": "6 marchas", "Refrigeración": "Por aceite",
+            "Frenos": "Discos con ABS en ambas ruedas", "Tanque": "12 L",
+            "Altura del asiento": "800 mm",
+        }),
+    "honda-pcx-160": ("ABS 2027 · Colombia",
+        "https://motos.honda.com.co/PCX-160-2026", {
+            "Cilindraje": "156,9 cm³", "Motor": "Monocilíndrico de 4 tiempos, OHC, 4 válvulas",
+            "Potencia": "15,8 HP a 8.500 rpm", "Torque": "14,7 Nm a 6.500 rpm",
+            "Transmisión": "Automática CVT", "Refrigeración": "Líquida",
+            "Frenos": "Disco delantero con ABS y disco trasero", "Baúl bajo el asiento": "30 L",
+            "Peso declarado": "126 kg",
+        }),
+    "yamaha-nmax": ("2027 · Colombia",
+        "https://www.incolmotos-yamaha.com.co/vehiculo/gpd155a/15956/", {
+            "Cilindraje": "155 cm³", "Motor": "Monocilíndrico de 4 tiempos, SOHC, 4 válvulas",
+            "Potencia": "15,15 HP a 8.000 rpm", "Torque": "14,2 Nm a 6.500 rpm",
+            "Transmisión": "Automática CVT", "Refrigeración": "Líquida",
+            "Frenos": "Discos con ABS en ambas ruedas", "Tanque": "7,1 L",
+            "Altura del asiento": "770 mm", "Peso con tanque lleno": "131 kg",
+        }),
+    "kawasaki-ninja-zx-4rr": ("2026 · Referencia Australia",
+        "https://www.kawasaki.com.au/en-au/motorcycle/ninja/supersport/ninja-zx-4r/2026-ninja-zx-4rr", {
+            "Cilindraje": "399 cm³", "Motor": "Cuatro cilindros en línea, 4 tiempos",
+            "Potencia": "55 kW a 14.500 rpm", "Torque": "37,6 Nm a 12.500 rpm",
+            "Transmisión": "6 marchas", "Refrigeración": "Líquida",
+            "Frenos": "Dos discos delanteros de 290 mm y trasero de 220 mm",
+            "Tanque": "15 L", "Altura del asiento": "800 mm", "Peso en orden de marcha": "188 kg",
+        }),
+    "suzuki-v-strom-250-sx": ("2027 · Colombia",
+        "https://www.suzuki.com.co/motocicletas/aventura/v-strom-250-sx", {
+            "Cilindraje": "249 cm³", "Motor": "Monocilíndrico de 4 tiempos",
+            "Potencia": "26,1 HP a 9.300 rpm", "Torque": "22,2 Nm a 7.300 rpm",
+            "Transmisión": "6 marchas", "Refrigeración": "Por aceite",
+            "Frenos": "Discos con ABS en ambas ruedas", "Tanque": "12 L",
+            "Altura del asiento": "835 mm", "Distancia al suelo": "205 mm",
+        }),
+}

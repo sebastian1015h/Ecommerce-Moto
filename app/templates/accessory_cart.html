@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Carrito de accesorios · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page gear-cart" data-cart>
+  <a class="text-link" href="{{ url_for('accessories') }}#productos">← Accesorios</a>
+  <h1 tabindex="-1">Tu carrito</h1>
+  <p class="cart-status" role="status" data-cart-status></p>
+  {% if error %}<p class="gear-error" role="alert">{{ error }}</p>{% endif %}
+  {% if lines %}
+  <div class="gear-cart-grid">
+    <ul class="gear-cart-items">
+      {% for line in lines %}
+      {% set item = line.product %}
+      <li class="gear-cart-line" data-cart-line="{{ item.variant_id }}">
+        <img src="{{ url_for('static', path='images/accessories/' ~ item.sku ~ '.webp') }}" alt="" width="120" height="120">
+        <div>
+          <h2>{{ item.name }}</h2>
+          {% if item.variant != 'Única' %}<p class="subtle">Talla {{ item.variant }}</p>{% endif %}
+          <p class="subtle">{{ price(item.price_cop) }} por unidad</p>
+          {% if line.qty > item.stock %}
+          <p class="gear-error">{{ 'Agotado' if not item.stock else 'Solo quedan ' ~ item.stock ~ ' unidades' }}. Ajusta el carrito.</p>
+          {% endif %}
+          <div class="gear-line-actions">
+            {% if item.stock %}
+            <form method="post" action="{{ url_for('accessory_cart_change') }}" data-cart-form>
+              <input type="hidden" name="sku" value="{{ item.variant_id }}">
+              <label for="qty-{{ item.variant_id }}">Cantidad</label>
+              <div class="gear-quantity">
+                <button type="button" data-cart-step="-1" aria-label="Reducir cantidad de {{ item.name }}">−</button>
+                <input id="qty-{{ item.variant_id }}" type="number" name="quantity" value="{{ [line.qty, item.stock]|min }}" min="1" max="{{ [item.stock, max_quantity]|min }}" required>
+                <button type="button" data-cart-step="1" aria-label="Aumentar cantidad de {{ item.name }}">+</button>
+              </div>
+              <button type="submit">Actualizar</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('accessory_cart_change') }}" data-cart-form>
+              <input type="hidden" name="sku" value="{{ item.variant_id }}">
+              <input type="hidden" name="quantity" value="0">
+              <button type="submit" aria-label="Quitar {{ item.name }}">Quitar</button>
+            </form>
+          </div>
+        </div>
+        <strong>{{ price(line.total) }}</strong>
+      </li>
+      {% endfor %}
+    </ul>
+    <aside class="gear-summary">
+      <h2>Resumen</h2>
+      <dl class="gear-totals">
+        <div><dt>Subtotal sin IVA</dt><dd>{{ price(subtotal) }}</dd></div>
+        <div><dt>IVA ({{ iva_rate }}%)</dt><dd>{{ price(iva) }}</dd></div>
+        <div class="gear-summary-total"><dt>Total</dt><dd><strong>{{ price(total) }} COP</strong></dd></div>
+      </dl>
+      <p class="subtle">Los precios del catálogo incluyen IVA. El carrito no reserva unidades.</p>
+      {% if not has_shortage %}<a class="button" href="{{ url_for('accessory_checkout') }}">Continuar al envío ↗</a>{% endif %}
+      <a class="text-link gear-continue" href="{{ url_for('accessories') }}#productos">Seguir explorando ↗</a>
+    </aside>
+  </div>
+  {% if not has_shortage %}
+  <details class="gear-invoice" data-cart-preview>
+    <summary>Vista previa de factura (PDF)</summary>
+    <p class="subtle">Documento de demostración sin validez fiscal. <a class="text-link" href="{{ url_for('accessory_invoice') }}" target="_blank" rel="noopener">Abrir PDF ↗</a></p>
+    <img alt="Primera página de la vista previa de factura de accesorios" width="894" height="1263"
+         data-preview-src="{{ url_for('accessory_invoice_image') }}" hidden>
+  </details>
+  {% else %}
+  <p class="gear-invoice">Ajusta las cantidades a las existencias para ver el PDF.</p>
+  {% endif %}
+  {% else %}
+  <div class="empty"><h2>Tu carrito está vacío</h2><p>Elige los accesorios para tu próxima rodada.</p><a class="button" href="{{ url_for('accessories') }}#productos">Ver accesorios ↗</a></div>
+  {% endif %}
+</section>
+{% endblock %}

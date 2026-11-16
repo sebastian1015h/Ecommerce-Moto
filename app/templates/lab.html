@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}Laboratorio API · Moto Garaje{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='lab.js').include_query_params(v=asset_versions['lab.js']) }}" defer></script>
+{% endblock %}
 {% block content %}
 <section class="shell page lab" data-lab>
   <div class="lab-head">
-    <div><h1>Laboratorio API</h1><p>Ejecuta una petición y sigue su recorrido hasta la respuesta de FastAPI.</p></div>
+    <div><h1>Laboratorio API</h1><p>Sigue una petición desde el navegador hasta PostgreSQL y de vuelta.</p></div>
     <a class="button" href="{{ url_for('swagger_ui_html') }}">Abrir Swagger UI ↗</a>
   </div>
+  <script id="lab-contracts" type="application/json">{{ {'sql': statements, 'handlers': handlers, 'repositories': repositories}|tojson }}</script>
   <div class="lab-grid">
     <form class="lab-panel lab-form">
       <h2>Petición</h2>
@@ -25,23 +29,99 @@
         <input name="note" maxlength="140" value="Moto de demostración" disabled>
       </label>
       <button class="button" type="submit">Enviar petición →</button>
-      <p>GET consulta las motos registradas en Gerencia. Los otros métodos usan una tabla temporal de Neon.</p>
+      <p>GET lee el inventario de Gerencia. POST, PATCH y DELETE trabajan en una tabla temporal.</p>
     </form>
-    <div class="lab-panel lab-console">
-      <h2>Recorrido y respuesta</h2>
-      <ol class="api-flow" aria-label="Recorrido de la petición">
-        <li data-step="0">Navegador</li>
-        <li data-step="1">FastAPI</li>
-        <li data-step="2" id="lab-handler">Neon · SELECT</li>
-        <li data-step="3">Respuesta</li>
-      </ol>
-      <p class="lab-sql-label">Ejemplo de SQL</p>
-      <pre id="lab-sql">SELECT slug, marca, modelo, categoria, color
-FROM inventory_motos
-ORDER BY created_at DESC LIMIT 500;</pre>
-      <p id="lab-status" role="status">Esperando una petición.</p>
-      <pre id="lab-response" aria-label="Cuerpo de la respuesta" tabindex="0">—</pre>
-    </div>
+    <section class="lab-panel lab-trace" aria-labelledby="lab-trace-title">
+      <header class="trace-header">
+        <div><h2 id="lab-trace-title">Mapa de la petición</h2><p>Recorrido animado con datos de la respuesta real.</p></div>
+        <p id="lab-status" role="status">Listo para enviar</p>
+      </header>
+      <div class="trace-map" data-trace-map>
+        <svg class="trace-wires" aria-hidden="true">
+          <defs>
+            <marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 9 5 1 9" fill="none" stroke="#96a9a9" stroke-width="1.7"/></marker>
+          </defs>
+          <path data-trace-edge="0"/>
+          <path data-trace-edge="1"/>
+          <path data-trace-edge="2"/>
+          <circle class="trace-packet" r="5" visibility="hidden"/>
+        </svg>
+        <span class="trace-link-label" data-edge-label="0" aria-hidden="true">HTTP</span>
+        <span class="trace-link-label" data-edge-label="1" aria-hidden="true">Ruta</span>
+        <span class="trace-link-label" data-edge-label="2" aria-hidden="true">SQL</span>
+
+        <article class="trace-node trace-browser" data-trace-node="0">
+          <div class="trace-node-head">
+            <svg class="trace-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M3 8h18"/></svg>
+            <div><h3>Navegador</h3><span>Cliente HTTP</span></div>
+          </div>
+          <p data-node-detail>Prepara la petición</p>
+          <code id="trace-client-path">GET /api/laboratorio/inventario</code>
+          <dl class="trace-facts">
+            <div><dt>Envía</dt><dd id="trace-send">GET · parámetros en la URL</dd></div>
+            <div><dt>Recibe</dt><dd id="trace-receive">Código HTTP y respuesta</dd></div>
+          </dl>
+        </article>
+        <article class="trace-node trace-api" data-trace-node="1">
+          <div class="trace-node-head">
+            <svg class="trace-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6-6 6 6 6m6-12 6 6-6 6m-2-15-2 18"/></svg>
+            <div><h3>FastAPI</h3><span>Servidor de aplicación</span></div>
+          </div>
+          <p data-node-detail>Valida y dirige la petición</p>
+          <code id="trace-handler">read_inventory()</code>
+          <dl class="trace-facts">
+            <div><dt>Ruta</dt><dd id="trace-route">GET /api/laboratorio/inventario</dd></div>
+            <div><dt>Módulo</dt><dd>app/catalog/router.py</dd></div>
+          </dl>
+        </article>
+        <article class="trace-node trace-repository" data-trace-node="2">
+          <div class="trace-node-head">
+            <svg class="trace-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8m-8 4h8m-8 4h5"/></svg>
+            <div><h3>Repositorio</h3><span>SQLAlchemy</span></div>
+          </div>
+          <p data-node-detail>Envía SQL con parámetros</p>
+          <code id="trace-operation">list_inventory()</code>
+          <dl class="trace-facts">
+            <div><dt>Repositorio</dt><dd>app/catalog/inventory.py</dd></div>
+            <div><dt>Llama</dt><dd id="trace-driver">connect() → execute(SELECT)</dd></div>
+          </dl>
+        </article>
+        <article class="trace-node trace-db" data-trace-node="3">
+          <div class="trace-node-head">
+            <svg class="trace-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+            <div><h3>Neon</h3><span>Base de datos PostgreSQL</span></div>
+          </div>
+          <p data-node-detail>Espera una consulta</p>
+          <code id="trace-table">inventory_motos</code>
+          <dl class="trace-facts">
+            <div><dt>Rama configurada</dt><dd id="trace-branch">Por verificar</dd></div>
+            <div><dt>Base</dt><dd id="trace-database">Por verificar</dd></div>
+            <div><dt>Esquema</dt><dd id="trace-schema">Por verificar</dd></div>
+            <div><dt>Operación</dt><dd id="trace-db-operation">SELECT · lectura</dd></div>
+          </dl>
+        </article>
+      </div>
+      <div class="trace-legend">
+        <span class="legend-out">Petición →</span>
+        <span class="legend-back">← Respuesta</span>
+        <span id="trace-db-time"></span>
+      </div>
+      <div class="trace-inspection">
+        <section aria-labelledby="request-title">
+          <h3 id="request-title">Solicitud HTTP</h3>
+          <pre id="lab-request" tabindex="0">GET /api/laboratorio/inventario</pre>
+        </section>
+        <section aria-labelledby="sql-title">
+          <h3 id="sql-title">Sentencia SQL</h3>
+          <pre id="lab-sql" tabindex="0">{{ statements.GET }};</pre>
+        </section>
+        <section aria-labelledby="response-title">
+          <h3 id="response-title">Respuesta HTTP</h3>
+          <p id="trace-response-meta" class="trace-response-meta">Esperando respuesta</p>
+          <pre id="lab-response" aria-label="Cuerpo de la respuesta" tabindex="0">—</pre>
+        </section>
+      </div>
+    </section>
   </div>
 </section>
 {% endblock %}

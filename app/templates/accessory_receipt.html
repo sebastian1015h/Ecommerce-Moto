@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Pedido registrado · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page">
+  <div class="checkout-contact order-receipt">
+    <p class="gear-category">Pedido {{ reference }}</p>
+    <h1>Pedido registrado</h1>
+    <p>Pendiente de pago. Guarda esta página como comprobante del pedido.</p>
+    <ul class="checkout-items">
+      {% for item in order['items'] %}
+      <li>{{ item.quantity }} × {{ item.name }}{% if item.variant != 'Única' %} · {{ item.variant }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    <dl class="gear-totals">
+      <div><dt>Subtotal sin IVA</dt><dd>{{ price(order.subtotal) }}</dd></div>
+      <div><dt>IVA de accesorios</dt><dd>{{ price(order.iva) }}</dd></div>
+      <div><dt>Envío</dt><dd>{{ price(order.shipping) }}</dd></div>
+      <div class="gear-summary-total"><dt>Total del pedido</dt><dd><strong>{{ price(order.total) }} COP</strong></dd></div>
+    </dl>
+    <a class="button" href="{{ url_for('accessories') }}">Volver a accesorios ↗</a>
+  </div>
+</section>
+{% endblock %}

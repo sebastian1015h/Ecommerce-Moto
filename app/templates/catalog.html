@@ -30,7 +30,14 @@
       {% else %}
       <img src="{{ url_for('inventory_photo', slug=slug) }}" alt="" loading="lazy">
       {% endif %}
-      <div><p>{{ brand }} · {{ categories[category] }}</p><h2>{{ model }}</h2><span>Explorar en el taller ↗</span></div>
+      <div>
+        <p>{{ brand }} · {{ categories[category] }}</p><h2>{{ model }}</h2>
+        {% if slug in listings %}
+        {% set listing = listings[slug] %}
+        <div class="moto-listing"><strong>Desde {{ price(listing.price_cop) }}</strong><span>{{ listing.stock ~ ' disponibles' if listing.stock else 'Agotada' }}</span></div>
+        {% endif %}
+        <span>Explorar en el taller ↗</span>
+      </div>
     </a>
     {% endfor %}
   </div>

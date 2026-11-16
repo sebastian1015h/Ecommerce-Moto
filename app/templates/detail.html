@@ -42,9 +42,11 @@
         <fieldset class="finish-picker">
           <legend>Acabado</legend>
           {% for label, hex, asset in finishes %}
+          {% set offer = offers.get(label) %}
           <button type="button" class="finish" aria-pressed="{{ 'true' if loop.first else 'false' }}"
                   data-image="{{ url_for('static', path='images/models/' ~ asset ~ '.webp') }}"
-                  data-color="{{ label }}">
+                  data-color="{{ label }}" data-stock="{{ offer.stock if offer else 0 }}"
+                  data-price-label="{{ price(offer.price_cop) ~ ' COP' if offer and offer.price_cop else '' }}">
             <span aria-hidden="true" style="--swatch: {{ hex }}"></span>{{ label }}
           </button>
           {% endfor %}
@@ -53,11 +55,38 @@
         <p><strong>Acabado</strong> · {{ uploaded_color }}</p>
         {% endif %}
         <p id="finish-status" class="visually-hidden" role="status"></p>
-        <p class="warehouse-note">Ficha de demostración. Precio y disponibilidad pendientes de confirmación.</p>
+        <div class="moto-offer" aria-live="polite">
+          <strong data-moto-price>{{ price(initial_offer.price_cop) ~ ' COP' if initial_offer and initial_offer.price_cop else 'Precio por confirmar' }}</strong>
+          {% set units = initial_offer.stock if initial_offer else 0 %}
+          <span data-moto-stock>{{ '1 unidad disponible' if units == 1 else units ~ ' unidades disponibles' if units else 'Agotada' }}</span>
+        </div>
+        <form class="moto-action" method="get" action="{{ url_for('moto_checkout', slug=slug) }}" data-moto-buy>
+          <input type="hidden" name="color" value="{{ initial_color }}">
+          <button class="button" type="submit" {% if not initial_offer or not initial_offer.price_cop or not initial_offer.stock %}disabled{% endif %}>Comprar moto ↗</button>
+        </form>
+        <p class="warehouse-note">Precio e inventario de demostración. El pedido queda pendiente de pago.</p>
         {% if viewer %}<p class="warehouse-viewer"><a class="text-link" href="{{ viewer[1] }}">{{ viewer[0] }} ↗</a></p>{% endif %}
         {% if source %}<a class="text-link" href="{{ source }}">Ver ficha de referencia ↗</a>{% endif %}
       </div>
     </div>
+    <section class="moto-specs" aria-labelledby="moto-specs-title">
+      <div class="section-head">
+        <div>
+          <h2 id="moto-specs-title">Ficha técnica</h2>
+          {% if edition %}<p class="subtle">{{ edition }}</p>{% endif %}
+        </div>
+        {% if specs_source %}<a class="text-link" href="{{ specs_source }}">Especificaciones del fabricante ↗</a>{% endif %}
+      </div>
+      {% if specs %}
+      <dl class="moto-spec-grid">
+        {% for name, value in specs.items() %}
+        <div><dt>{{ name }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+      </dl>
+      {% else %}
+      <p class="subtle">La ficha técnica aún está por completar.</p>
+      {% endif %}
+    </section>
   </div>
 </section>
 {% endblock %}

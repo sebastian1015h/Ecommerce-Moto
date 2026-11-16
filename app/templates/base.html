@@ -8,25 +8,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', path='store.css') }}">
-  <script src="{{ url_for('static', path='store.js') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='store.css').include_query_params(v=asset_versions['store.css']) }}">
+  <script src="{{ url_for('static', path='store.js').include_query_params(v=asset_versions['store.js']) }}" defer></script>
+  {% block scripts %}{% endblock %}
 </head>
 <body>
   <a class="skip" href="#contenido">Ir al contenido</a>
   <header class="top">
-    <div class="shell nav">
+    <div class="shell nav nav-with-menu">
+      <button type="button" class="nav-menu-button" data-open-menu aria-haspopup="dialog" aria-controls="site-menu" aria-label="Abrir menú" hidden>
+        <span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </button>
       <a class="wordmark" href="{{ url_for('home') }}"><span aria-hidden="true"></span>MOTO GARAJE</a>
       <nav aria-label="Principal">
         <a href="{{ url_for('home') }}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Inicio</a>
         <a href="{{ url_for('catalog') }}" {% if request.url.path == '/motos' %}aria-current="page"{% endif %}>Catálogo</a>
+        <a href="{{ url_for('accessories') }}" {% if request.url.path.startswith('/accesorios') %}aria-current="page"{% endif %}>Accesorios</a>
         <a href="{{ url_for('lab') }}" {% if request.url.path == '/laboratorio' %}aria-current="page"{% endif %}>Laboratorio</a>
         <a href="{{ url_for('manager') }}" {% if request.url.path == '/gerencia' %}aria-current="page"{% endif %}>Gerencia</a>
       </nav>
-      <a class="search" aria-label="Buscar motos" href="{{ url_for('catalog') }}#buscar">
+      {% set gear_section = request.url.path.startswith('/accesorios') %}
+      <a class="search" aria-label="{{ 'Buscar accesorios' if gear_section else 'Buscar motos' }}" href="{{ url_for('accessories') ~ '#gear-search' if gear_section else url_for('catalog') ~ '#buscar' }}">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
       </a>
     </div>
   </header>
+  <dialog class="slide-panel site-menu" id="site-menu" data-site-menu aria-labelledby="site-menu-title">
+    <div class="slide-head"><h2 id="site-menu-title">Moto Garaje</h2><button type="button" data-panel-close aria-label="Cerrar menú">×</button></div>
+    <nav aria-label="Menú deslizante" class="slide-menu-links">
+      <a href="{{ url_for('home') }}">Inicio <span aria-hidden="true">↗</span></a>
+      <a href="{{ url_for('catalog') }}">Motos <span aria-hidden="true">↗</span></a>
+      <a href="{{ url_for('accessories') }}">Accesorios <span aria-hidden="true">↗</span></a>
+      <a href="{{ url_for('lab') }}">Laboratorio API <span aria-hidden="true">↗</span></a>
+      <a href="{{ url_for('manager') }}">Gerencia <span aria-hidden="true">↗</span></a>
+    </nav>
+  </dialog>
+  {% if gear_section %}
+  <dialog class="slide-panel cart-drawer" data-cart-drawer aria-labelledby="cart-drawer-title">
+    <div class="slide-head"><h2 id="cart-drawer-title">Tu carrito</h2><button type="button" data-panel-close aria-label="Cerrar carrito">×</button></div>
+    <div class="cart-drawer-body" data-drawer-body></div>
+    <p class="cart-status" data-drawer-status role="status"></p>
+  </dialog>
+  {% endif %}
   <main id="contenido">{% block content %}{% endblock %}</main>
   <footer class="footer">
     <div class="shell footer-inner">

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Inventario de accesorios · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page">
+  <a class="text-link" href="{{ url_for('manager') }}">← Gerencia</a>
+  <h1>Inventario de accesorios</h1>
+  <p class="subtle">Actualiza las existencias de cada producto en Neon.</p>
+  {% if error %}<p class="gear-error" role="alert">{{ error }}</p>{% endif %}
+  {% if updated %}<p role="status">Inventario actualizado.</p>{% endif %}
+  <div class="gear-stock">
+    <table>
+      <thead><tr><th scope="col">Accesorio</th><th scope="col">Variante</th><th scope="col">Categoría</th><th scope="col">Stock</th><th scope="col">Ajuste</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <th scope="row">{{ item.name }}</th><td>{{ item.variant }}</td><td>{{ categories[item.category] }}</td><td>{{ item.stock }}</td>
+          <td>
+            <form method="post" action="{{ url_for('accessory_stock_change') }}">
+              <input type="hidden" name="sku" value="{{ item.variant_id }}">
+              <input type="hidden" name="old_stock" value="{{ item.stock }}">
+              <label class="visually-hidden" for="stock-{{ item.variant_id }}">Nuevo stock de {{ item.name }}, {{ item.variant }}</label>
+              <input id="stock-{{ item.variant_id }}" type="number" min="0" max="100000" value="{{ item.stock }}" name="new_stock" required>
+              <button type="submit">Guardar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

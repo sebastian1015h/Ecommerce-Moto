@@ -1,5 +1,7 @@
+import json
 import os
 from pathlib import Path
+from time import perf_counter
 
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
@@ -10,7 +12,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.catalog.finishes import FINISHES, VIEWERS
-from app.catalog import inventory
+from app.accessories.pricing import price
+from app.catalog import inventory, sales
+from app.catalog.specifications import SPECIFICATIONS
 from app.catalog.workshops import WORKSHOPS
 from app.neon_services import storage
 
@@ -66,12 +70,16 @@ def get_moto(slug: str):
         moto = inventory.lookup_moto(slug)
         if moto is None:
             raise HTTPException(404, "Moto no encontrada")
-        return moto
+        return {**moto, "especificaciones": moto["specs"],
+                "inventario": [dict(offer) for offer in sales.offers(slug)]}
     brand, model, category = MOTOS[slug]
     source, finishes = FINISHES[slug]
     return {
         "slug": slug, "marca": brand, "modelo": model, "categoria": category,
         "colores": [color for color, _, _ in finishes], "fuente": source,
+        "especificaciones": SPECIFICATIONS[slug][2],
+        "fuente_especificaciones": SPECIFICATIONS[slug][1],
+        "inventario": [dict(offer) for offer in sales.offers(slug)],
     }
 
 
@@ -79,50 +87,74 @@ class DemoNote(BaseModel):
     nota: str = Field(min_length=1, max_length=140)
 
 
-def run_db_example(operation, value=""):
+def trace_lab_query(response, query, *args):
     if not os.getenv("DATABASE_URL"):
-        raise HTTPException(503, "PostgreSQL aún no está configurado.")
+        raise HTTPException(503, "PostgreSQL aún no está configurado.",
+                            headers={"X-Lab-Database": "not-configured"})
+    start = perf_counter()
+    target = {}
     try:
-        return inventory.inventory_example(operation, value)
+        result = query(*args, target=target)
     except SQLAlchemyError as error:
-        raise HTTPException(503, "PostgreSQL no respondió.") from error
+        duration = (perf_counter() - start) * 1000
+        raise HTTPException(503, "PostgreSQL no respondió.", headers={
+            "X-Lab-Database": "unavailable", "Server-Timing": f"postgres;dur={duration:.1f}",
+        }) from error
+    response.headers["X-Lab-Database"] = "ok"
+    response.headers["X-Lab-Rows"] = str(len(result) if isinstance(result, list) else 1)
+    response.headers["X-Lab-Target"] = json.dumps(target, separators=(",", ":"))
+    response.headers["Server-Timing"] = f"postgres;dur={(perf_counter() - start) * 1000:.1f}"
+    return result
 
 
 @api.get("/laboratorio/inventario", tags=["Laboratorio"])
-def read_inventory(q: str = ""):
+def read_inventory(response: Response, q: str = ""):
     """Consulta las motos registradas desde Gerencia en PostgreSQL."""
-    if not os.getenv("DATABASE_URL"):
-        raise HTTPException(503, "PostgreSQL aún no está configurado.")
-    try:
-        rows = inventory.list_inventory()
-    except SQLAlchemyError as error:
-        raise HTTPException(503, "PostgreSQL no respondió.") from error
-    query = q.strip().casefold()
-    return [row for row in rows if query in f"{row['marca']} {row['modelo']}".casefold()]
+    return trace_lab_query(response, inventory.list_inventory, q.strip())
 
 
 @api.post("/laboratorio/muestra", status_code=201, tags=["Laboratorio"])
-def example_create(note: DemoNote):
+def example_create(note: DemoNote, response: Response):
     """Ejecuta INSERT en una tabla temporal de PostgreSQL."""
-    return {"operacion": "INSERT", "modelo": run_db_example("insert", note.nota)}
+    return {"operacion": "INSERT", "modelo": trace_lab_query(response, inventory.inventory_example, "insert", note.nota)}
 
 
 @api.patch("/laboratorio/muestra", tags=["Laboratorio"])
-def example_update(note: DemoNote):
+def example_update(note: DemoNote, response: Response):
     """Ejecuta UPDATE en una tabla temporal de PostgreSQL."""
-    return {"operacion": "UPDATE", "modelo": run_db_example("update", note.nota)}
+    return {"operacion": "UPDATE", "modelo": trace_lab_query(response, inventory.inventory_example, "update", note.nota)}
 
 
 @api.delete("/laboratorio/muestra", status_code=204, tags=["Laboratorio"])
 def example_delete():
     """Ejecuta DELETE en una tabla temporal de PostgreSQL."""
-    run_db_example("delete")
-    return Response(status_code=204)
+    response = Response(status_code=204)
+    trace_lab_query(response, inventory.inventory_example, "delete")
+    return response
 
 
 @router.get("/laboratorio", name="lab", include_in_schema=False)
 def lab(request: Request):
-    return templates.TemplateResponse(request=request, name="lab.html")
+    return templates.TemplateResponse(request=request, name="lab.html", context={
+        "statements": {
+            "GET": inventory.INVENTORY_QUERY,
+            "POST": inventory.EXAMPLE_QUERIES["insert"],
+            "PATCH": inventory.EXAMPLE_QUERIES["update"],
+            "DELETE": inventory.EXAMPLE_QUERIES["delete"],
+        },
+        "handlers": {
+            "GET": read_inventory.__name__,
+            "POST": example_create.__name__,
+            "PATCH": example_update.__name__,
+            "DELETE": example_delete.__name__,
+        },
+        "repositories": {
+            "GET": inventory.list_inventory.__name__,
+            "POST": inventory.inventory_example.__name__,
+            "PATCH": inventory.inventory_example.__name__,
+            "DELETE": inventory.inventory_example.__name__,
+        },
+    })
 
 
 @router.get("/gerencia", name="manager", include_in_schema=False)
@@ -140,9 +172,16 @@ def manager_create(
     categoria: str = Form(max_length=30),
     color: str = Form(max_length=40),
     imagen: UploadFile = File(),
+    price_cop: int | None = Form(default=None, ge=1, le=1000000000),
+    stock: int = Form(default=0, ge=0, le=10000),
+    engine: str = Form(default="", max_length=100),
+    displacement: str = Form(default="", max_length=40),
+    power: str = Form(default="", max_length=60),
+    transmission: str = Form(default="", max_length=60),
 ):
     modelo, color = modelo.strip(), color.strip()
-    values = dict(marca=marca, modelo=modelo, categoria=categoria, color=color)
+    values = dict(marca=marca, modelo=modelo, categoria=categoria, color=color, price_cop=price_cop,
+                  stock=stock, engine=engine, displacement=displacement, power=power, transmission=transmission)
 
     def reject(message, status=400):
         return templates.TemplateResponse(
@@ -165,7 +204,12 @@ def manager_create(
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError):
         return reject("Usa una foto fija JPG, PNG o WebP de hasta 20 megapíxeles.")
     try:
-        slug = inventory.create_moto(marca, modelo, categoria, color, photo)
+        specs = {key: value.strip() for key, value in {
+            "Motor": engine, "Cilindraje": displacement, "Potencia": power, "Transmisión": transmission,
+        }.items() if value.strip()}
+        slug = inventory.create_moto(
+            marca, modelo, categoria, color, photo, price_cop=price_cop, stock=stock, specs=specs,
+        )
     except IntegrityError:
         return reject("Ese modelo ya está registrado.", 409)
     except (SQLAlchemyError, BotoCoreError, ClientError, KeyError):
@@ -194,12 +238,23 @@ def home(request: Request):
 @router.get("/motos", name="catalog", include_in_schema=False)
 def catalog(request: Request, categoria: str = "", marca: str = "", q: str = ""):
     motos = filter_motos(categoria, marca, q)
+    listings = {}
+    for offer in sales.offers():
+        if offer["price_cop"] is None:
+            continue
+        listing = listings.setdefault(offer["slug"], {"price_cop": offer["price_cop"], "stock": 0})
+        if offer["stock"] and not listing["stock"]:
+            listing["price_cop"] = offer["price_cop"]
+        elif bool(offer["stock"]) == bool(listing["stock"]):
+            listing["price_cop"] = min(listing["price_cop"], offer["price_cop"])
+        listing["stock"] += offer["stock"]
     return templates.TemplateResponse(
         request=request,
         name="catalog.html",
         context={
             "categories": CATEGORIES, "brands": BRANDS, "motos": motos, "finishes": FINISHES,
             "category": categoria, "brand_filter": marca, "query": q.strip(),
+            "listings": listings, "price": price,
         },
     )
 
@@ -207,6 +262,7 @@ def catalog(request: Request, categoria: str = "", marca: str = "", q: str = "")
 @router.get("/motos/{slug}", name="moto_detail", include_in_schema=False)
 def moto_detail(request: Request, slug: str):
     moto = MOTOS.get(slug)
+    offers = {offer["color"]: offer for offer in sales.offers(slug)}
     if moto is None:
         row = inventory.lookup_moto(slug)
         if row is None:
@@ -215,9 +271,12 @@ def moto_detail(request: Request, slug: str):
             "brand": row["marca"], "model": row["modelo"],
             "category_name": CATEGORIES[row["categoria"]], "uploaded_color": row["color"],
             "uploaded_photo": request.url_for("inventory_photo", slug=slug), "views": (),
+            "slug": slug, "offers": offers, "price": price, "specs": row["specs"],
+            "initial_color": row["color"], "initial_offer": offers.get(row["color"]),
         })
     brand, model, category = moto
     source, finishes = FINISHES[slug]
+    edition, specs_source, specs = SPECIFICATIONS[slug]
     return templates.TemplateResponse(
         request=request,
         name="detail.html",
@@ -233,5 +292,8 @@ def moto_detail(request: Request, slug: str):
                 ("Delantera izquierda", "duke-black-front-left"),
             ) if slug == "ktm-390-duke" else (),
             "viewer": VIEWERS.get(slug),
+            "slug": slug, "offers": offers, "price": price, "specs": specs,
+            "edition": edition, "specs_source": specs_source,
+            "initial_color": finishes[0][0], "initial_offer": offers.get(finishes[0][0]),
         },
     )

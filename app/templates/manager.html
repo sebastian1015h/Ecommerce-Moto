@@ -4,6 +4,8 @@
 <section class="shell page manager-page">
   <a class="text-link" href="{{ url_for('catalog') }}">← Catálogo</a>
   <h1>Gerencia</h1>
+  <p><a class="text-link" href="{{ url_for('moto_stock') }}">Inventario de motos ↗</a></p>
+  <p><a class="text-link" href="{{ url_for('accessory_stock') }}">Inventario de accesorios ↗</a></p>
   <p class="subtle">Agrega una moto y su foto al catálogo.</p>
   <form class="manager-form lab-panel lab-form" action="{{ url_for('manager_create') }}" method="post" enctype="multipart/form-data">
     {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
@@ -26,7 +28,18 @@
         </select>
       </label>
       <label>Color<input name="color" maxlength="40" required value="{{ values.color or '' }}" placeholder="Ej. Azul metálico"></label>
+      <label>Precio de venta (COP)<input type="number" name="price_cop" min="1" max="1000000000" value="{{ values.price_cop or '' }}"></label>
+      <label>Stock inicial<input type="number" name="stock" min="0" max="10000" value="{{ values.stock or 0 }}" required></label>
     </div>
+    <fieldset class="manager-specs">
+      <legend>Ficha técnica</legend>
+      <div class="manager-fields">
+        <label>Motor<input name="engine" maxlength="100" value="{{ values.engine or '' }}"></label>
+        <label>Cilindraje<input name="displacement" maxlength="40" value="{{ values.displacement or '' }}"></label>
+        <label>Potencia<input name="power" maxlength="60" value="{{ values.power or '' }}"></label>
+        <label>Transmisión<input name="transmission" maxlength="60" value="{{ values.transmission or '' }}"></label>
+      </div>
+    </fieldset>
     <label>Foto del modelo
       <input name="imagen" type="file" accept="image/jpeg,image/png,image/webp" required aria-describedby="photo-limit">
     </label>

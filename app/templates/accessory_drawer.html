@@ -1,0 +1,44 @@
+<div data-drawer-content data-count="{{ lines|sum(attribute='qty') }}">
+  {% if error %}<p class="gear-error" role="alert">{{ error }}</p>{% endif %}
+  {% if lines %}
+  <ul class="drawer-items">
+    {% for line in lines %}
+    {% set item = line.product %}
+    <li>
+      <img src="{{ url_for('static', path='images/accessories/' ~ item.sku ~ '.webp') }}" alt="" width="72" height="72">
+      <div>
+        <strong>{{ item.name }}</strong>
+        {% if item.variant != 'Única' %}<p class="subtle">Talla {{ item.variant }}</p>{% endif %}
+        <p>{{ price(line.total) }}</p>
+        {% if line.qty > item.stock %}<p class="gear-error">Stock actual · {{ item.stock }}</p>{% endif %}
+        <div class="gear-line-actions">
+          {% if item.stock %}
+          <form action="{{ url_for('accessory_cart_change') }}" method="post" data-quick-add>
+            <input type="hidden" name="sku" value="{{ item.variant_id }}">
+            <label>Cant. <input type="number" name="quantity" min="1" max="{{ [item.stock, max_quantity]|min }}" value="{{ [line.qty, item.stock]|min }}" required></label>
+            <button type="submit">Cambiar</button>
+          </form>
+          {% endif %}
+          <form action="{{ url_for('accessory_cart_change') }}" method="post" data-quick-add>
+            <input type="hidden" name="sku" value="{{ item.variant_id }}">
+            <input type="hidden" name="quantity" value="0">
+            <button type="submit" aria-label="Quitar {{ item.name }} ({{ item.variant }})">Quitar</button>
+          </form>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <dl class="gear-totals">
+    <div><dt>Subtotal sin IVA</dt><dd>{{ price(subtotal) }}</dd></div>
+    <div><dt>IVA ({{ iva_rate }}%)</dt><dd>{{ price(iva) }}</dd></div>
+    <div class="gear-summary-total"><dt>Total</dt><dd><strong>{{ price(total) }} COP</strong></dd></div>
+  </dl>
+  <div class="drawer-actions">
+    {% if not has_shortage %}<a class="button" href="{{ url_for('accessory_checkout') }}">Continuar al envío ↗</a>{% endif %}
+    <a class="text-link" href="{{ url_for('accessory_cart') }}">Ver carrito y factura previa ↗</a>
+  </div>
+  {% else %}
+  <p class="subtle">Tu carrito está vacío.</p>
+  {% endif %}
+</div>

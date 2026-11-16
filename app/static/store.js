@@ -11,6 +11,7 @@ if (showroom) {
   const angleRange = angleViewer?.querySelector("input");
   const angleLabel = angleViewer?.querySelector("[data-angle-label]");
   const angles = [...(angleViewer?.querySelectorAll("[data-angle]") ?? [])];
+  const purchase = showroom.querySelector("[data-moto-buy]");
   let selection = 0;
 
   async function displayPhoto(url, label) {
@@ -65,6 +66,15 @@ if (showroom) {
       }
       status.textContent = `Acabado: ${button.dataset.color}`;
       finishes.forEach((finish) => finish.setAttribute("aria-pressed", String(finish === button)));
+      if (purchase) {
+        const stock = Number(button.dataset.stock);
+        const priceLabel = button.dataset.priceLabel;
+        purchase.elements.color.value = button.dataset.color;
+        purchase.querySelector("button").disabled = !stock || !priceLabel;
+        showroom.querySelector("[data-moto-price]").textContent = priceLabel || "Precio por confirmar";
+        showroom.querySelector("[data-moto-stock]").textContent =
+          stock === 1 ? "1 unidad disponible" : stock ? `${stock} unidades disponibles` : "Agotada";
+      }
       if (angleRange) {
         angleViewer.hidden = button !== finishes[0];
         angleRange.disabled = angleViewer.hidden;
@@ -75,86 +85,178 @@ if (showroom) {
   }
 }
 
-const lab = document.querySelector("[data-lab]");
-if (lab) {
-  const form = lab.querySelector("form");
-  const method = form.elements.method;
-  const query = form.elements.query;
-  const note = form.elements.note;
-  const submit = form.querySelector("button");
-  const status = lab.querySelector("#lab-status");
-  const output = lab.querySelector("#lab-response");
-  const sql = lab.querySelector("#lab-sql");
-  const steps = [...lab.querySelectorAll("[data-step]")];
-  const actions = { GET: "Neon · SELECT", POST: "Neon · INSERT", PATCH: "Neon · UPDATE", DELETE: "Neon · DELETE" };
-  const sqlExamples = {
-    GET: "SELECT slug, marca, modelo, categoria, color\nFROM inventory_motos\nORDER BY created_at DESC LIMIT 500;",
-    POST: "INSERT INTO inventory_example VALUES (1, :value)\nRETURNING modelo;",
-    PATCH: "UPDATE inventory_example SET modelo = :value\nWHERE id = 1 RETURNING modelo;",
-    DELETE: "DELETE FROM inventory_example\nWHERE id = 1 RETURNING modelo;",
-  };
-  const requestPath = () => method.value === "GET" ? "/api/laboratorio/inventario" : "/api/laboratorio/muestra";
-  const setStep = (index) => {
-    steps.forEach((step, i) => {
-      step.classList.toggle("completed", i < index);
-      step.classList.toggle("active", i === index);
-    });
-  };
-  const pause = () => new Promise((resolve) => setTimeout(resolve,
-    matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 240));
+if (document.querySelector("[data-cart]")) {
+  let updating = false;
 
-  function updateControls() {
-    query.disabled = method.value !== "GET";
-    note.disabled = !["POST", "PATCH"].includes(method.value);
-    note.required = !note.disabled;
-    lab.querySelector("#lab-query").hidden = query.disabled;
-    lab.querySelector("#lab-payload").hidden = note.disabled;
-    lab.querySelector("#lab-path").textContent = requestPath();
-    steps[2].textContent = actions[method.value];
-    sql.textContent = sqlExamples[method.value];
-    setStep(-1);
+  function openPreview(details) {
+    const image = details.querySelector("img[data-preview-src]");
+    if (details.open && image.hidden) {
+      image.src = image.dataset.previewSrc;
+      image.hidden = false;
+    }
   }
 
-  method.addEventListener("change", updateControls);
-  updateControls();
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const verb = method.value;
-    const path = requestPath();
-    const url = new URL(path, location.origin);
-    const options = { method: verb, signal: AbortSignal.timeout(10000) };
-    if (!note.disabled) {
-      options.headers = { "Content-Type": "application/json" };
-      options.body = JSON.stringify({ nota: note.value });
-    }
-    if (verb === "GET" && query.value.trim()) url.searchParams.set("q", query.value.trim());
+  document.addEventListener("toggle", (event) => {
+    if (event.target.matches("[data-cart-preview]")) openPreview(event.target);
+  }, true);
 
-    submit.disabled = true;
-    method.disabled = true;
-    status.textContent = `Enviando ${verb} ${url.pathname}${url.search}…`;
-    output.textContent = "—";
-    setStep(0);
-    const started = performance.now();
-    const result = fetch(url, options).then(async (response) => {
-      const elapsed = Math.round(performance.now() - started);
-      const body = response.status === 204 ? "Sin cuerpo" : JSON.stringify(await response.json(), null, 2);
-      return { status: response.status, body, elapsed };
-    }).catch(() => null);
-    await pause();
-    setStep(1);
-    await pause();
-    setStep(2);
-    const response = await result;
-    await pause();
-    if (response) {
-      setStep(3);
-      status.textContent = `HTTP ${response.status} · ${response.elapsed} ms`;
-      output.textContent = response.body;
-    } else {
-      setStep(-1);
-      status.textContent = "No se pudo completar la petición. Intenta de nuevo.";
+  function activateCart(cart) {
+    cart.dataset.cartReady = "";
+    for (const form of cart.querySelectorAll("form[data-cart-form]")) {
+      const quantity = form.querySelector("input[type=number]");
+      if (!quantity) continue;
+      for (const button of form.querySelectorAll("[data-cart-step]")) {
+        const change = Number(button.dataset.cartStep);
+        button.disabled = change < 0 ? +quantity.value <= +quantity.min : +quantity.value >= +quantity.max;
+      }
     }
-    submit.disabled = false;
-    method.disabled = false;
+  }
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-cart-step]");
+    if (!button || updating) return;
+    const input = button.form.elements.quantity;
+    const quantity = input.valueAsNumber + Number(button.dataset.cartStep);
+    if (Number.isInteger(quantity) && quantity >= +input.min && quantity <= +input.max) {
+      input.value = quantity;
+      button.form.requestSubmit();
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    if (event.target.matches("[data-cart-form] input[type=number]") && event.target.checkValidity()) {
+      event.target.form.requestSubmit();
+    }
+  });
+
+  document.addEventListener("submit", async (event) => {
+    const form = event.target;
+    if (!form.matches("[data-cart-form]")) return;
+    event.preventDefault();
+    if (updating) return;
+
+    const cart = form.closest("[data-cart]");
+    const previewOpen = cart.querySelector("[data-cart-preview]")?.open;
+    const focusedLine = form.closest("[data-cart-line]").dataset.cartLine;
+    const payload = new URLSearchParams(new FormData(form));
+    const status = cart.querySelector("[data-cart-status]");
+    updating = true;
+    cart.setAttribute("aria-busy", "true");
+    status.textContent = "Actualizando carrito…";
+    try {
+      const response = await fetch(form.getAttribute("action"), { method: "POST", body: payload });
+      const page = new DOMParser().parseFromString(await response.text(), "text/html");
+      const updated = page.querySelector("[data-cart]");
+      if (!updated) throw new Error("Respuesta de carrito inválida");
+      const nextPreview = updated.querySelector("[data-cart-preview]");
+      if (nextPreview && previewOpen) nextPreview.open = true;
+      cart.replaceWith(updated);
+      activateCart(updated);
+      if (nextPreview?.open) openPreview(nextPreview);
+      updated.querySelector("[data-cart-status]").textContent = response.ok ? "Carrito actualizado." : "";
+      const quantity = updated.querySelector(`[data-cart-line="${CSS.escape(focusedLine)}"] input[type=number]`);
+      (quantity || updated.querySelector("h1")).focus({ preventScroll: true });
+    } catch {
+      status.textContent = "No se pudo actualizar. Intenta de nuevo.";
+    } finally {
+      cart.removeAttribute("aria-busy");
+      updating = false;
+    }
+  });
+
+  activateCart(document.querySelector("[data-cart]"));
+}
+
+function closePanel(panel) {
+  if (!panel.open || panel.classList.contains("closing")) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    panel.close();
+    return;
+  }
+  panel.classList.add("closing");
+  setTimeout(() => {
+    panel.close();
+    panel.classList.remove("closing");
+  }, 230);
+}
+
+for (const panel of document.querySelectorAll("dialog.slide-panel")) {
+  panel.querySelector("[data-panel-close]").addEventListener("click", () => closePanel(panel));
+  panel.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closePanel(panel);
+  });
+  panel.addEventListener("click", (event) => {
+    if (event.target === panel) {
+      const bounds = panel.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right ||
+          event.clientY < bounds.top || event.clientY > bounds.bottom) closePanel(panel);
+    }
+  });
+}
+
+const menuButton = document.querySelector("[data-open-menu]");
+const siteMenu = document.querySelector("[data-site-menu]");
+if (typeof siteMenu?.showModal === "function") {
+  menuButton.hidden = false;
+  menuButton.addEventListener("click", () => siteMenu.showModal());
+}
+
+const cartDrawer = document.querySelector("[data-cart-drawer]");
+if (typeof cartDrawer?.showModal === "function") {
+  let drawerBusy = false;
+  const body = cartDrawer.querySelector("[data-drawer-body]");
+  const status = cartDrawer.querySelector("[data-drawer-status]");
+
+  async function showDrawer(url, options = {}) {
+    if (drawerBusy) return;
+    drawerBusy = true;
+    if (!cartDrawer.open) cartDrawer.showModal();
+    body.setAttribute("aria-busy", "true");
+    status.textContent = "Actualizando carrito…";
+    try {
+      const response = await fetch(url, { ...options, headers: { "X-Cart-Drawer": "1" } });
+      const page = new DOMParser().parseFromString(await response.text(), "text/html");
+      const content = page.querySelector("[data-drawer-content]");
+      if (!content) throw new Error("Respuesta de carrito inválida");
+      const restoreFocus = body.contains(document.activeElement);
+      body.replaceChildren(content);
+      document.querySelectorAll("[data-cart-count]").forEach((counter) => {
+        counter.textContent = content.dataset.count;
+      });
+      if (restoreFocus) cartDrawer.querySelector("[data-panel-close]").focus();
+      status.textContent = response.ok ? "Carrito actualizado." : "";
+    } catch {
+      status.textContent = "No se pudo actualizar el carrito. Intenta de nuevo.";
+    } finally {
+      body.removeAttribute("aria-busy");
+      drawerBusy = false;
+    }
+  }
+
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-open-cart]");
+    if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    showDrawer(link.href);
+  });
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!form.matches("[data-quick-add]")) return;
+    event.preventDefault();
+    showDrawer(form.getAttribute("action"), { method: "POST", body: new URLSearchParams(new FormData(form)) });
+  });
+}
+
+const checkout = document.querySelector("[data-checkout]");
+if (checkout) {
+  const amount = new Intl.NumberFormat("es-CO");
+  const format = (value) => `$ ${amount.format(value)}`;
+  checkout.elements.zone.addEventListener("change", () => {
+    const shipping = Number(checkout.elements.zone.selectedOptions[0].dataset.shipping);
+    const total = Number(checkout.dataset.merchandise) + shipping;
+    checkout.elements.expected_total.value = total;
+    checkout.querySelector("[data-checkout-shipping]").textContent = format(shipping);
+    checkout.querySelector("[data-checkout-total]").textContent = `${format(total)} COP`;
   });
 }

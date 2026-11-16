@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Inventario de motos · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page">
+  <a class="text-link" href="{{ url_for('manager') }}">← Gerencia</a>
+  <h1>Inventario de motos</h1>
+  <p class="subtle">Edita el precio en COP y las existencias de cada acabado.</p>
+  {% if error %}<p class="gear-error" role="alert">{{ error }}</p>{% endif %}
+  {% if updated %}<p role="status">Inventario actualizado.</p>{% endif %}
+  <div class="gear-stock moto-stock">
+    <table>
+      <thead><tr><th scope="col">Moto</th><th scope="col">Acabado</th><th scope="col">Precio y stock</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <th scope="row"><a class="text-link" href="{{ url_for('moto_detail', slug=row.slug) }}">{{ row.brand }} {{ row.model }}</a></th>
+          <td>{{ row.color }}</td>
+          <td>
+            <form method="post" action="{{ url_for('moto_stock_change') }}">
+              <input type="hidden" name="slug" value="{{ row.slug }}">
+              <input type="hidden" name="color" value="{{ row.color }}">
+              <input type="hidden" name="previous_stock" value="{{ row.stock }}">
+              <input type="hidden" name="previous_price" value="{{ row.price_cop or '' }}">
+              <label>Precio <input name="price_cop" type="number" min="1" max="1000000000" value="{{ row.price_cop or '' }}" aria-label="Precio de {{ row.model }} {{ row.color }}"></label>
+              <label>Stock <input name="stock" type="number" min="0" max="10000" value="{{ row.stock }}" aria-label="Stock de {{ row.model }} {{ row.color }}" required></label>
+              <button type="submit">Guardar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

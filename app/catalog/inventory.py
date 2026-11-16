@@ -1,3 +1,4 @@
+import json
 import os
 from io import BytesIO
 from uuid import uuid4
@@ -6,7 +7,20 @@ from PIL import Image, ImageOps
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
+from app.catalog import sales
 from app.neon_services import database_engine, storage
+
+INVENTORY_QUERY = """SELECT slug, marca, modelo, categoria, color
+FROM inventory_motos
+WHERE strpos(lower(marca || ' ' || modelo), lower(:query)) > 0
+ORDER BY created_at DESC
+LIMIT 500"""
+
+EXAMPLE_QUERIES = {
+    "insert": "INSERT INTO inventory_example VALUES (1, :value)\nRETURNING modelo",
+    "update": "UPDATE inventory_example SET modelo = :value\nWHERE id = 1 RETURNING modelo",
+    "delete": "DELETE FROM inventory_example\nWHERE id = 1 RETURNING modelo",
+}
 
 
 def migrate():
@@ -30,16 +44,28 @@ def migrate():
     engine.dispose()
 
 
-def list_inventory():
+def describe_target(connection, relation, target):
+    row = connection.execute(text("""
+        SELECT current_database() AS database, ns.nspname AS schema, cls.relname AS relation
+        FROM pg_catalog.pg_class AS cls
+        JOIN pg_catalog.pg_namespace AS ns ON ns.oid = cls.relnamespace
+        WHERE cls.oid = to_regclass(:relation)
+    """), {"relation": relation}).mappings().one()
+    target.update(row)
+    if branch := os.getenv("NEON_BRANCH"):
+        target["branch"] = branch
+
+
+def list_inventory(query="", *, target=None):
     if not os.getenv("DATABASE_URL"):
         return []
     with database_engine().connect() as connection:
-        return [
-            dict(row) for row in connection.execute(text("""
-                SELECT slug, marca, modelo, categoria, color
-                FROM inventory_motos ORDER BY created_at DESC LIMIT 500
-            """)).mappings()
+        rows = [
+            dict(row) for row in connection.execute(text(INVENTORY_QUERY), {"query": query}).mappings()
         ]
+        if target is not None:
+            describe_target(connection, "inventory_motos", target)
+        return rows
 
 
 def lookup_moto(slug):
@@ -47,7 +73,7 @@ def lookup_moto(slug):
         return None
     with database_engine().connect() as connection:
         row = connection.execute(text("""
-            SELECT slug, marca, modelo, categoria, color FROM inventory_motos WHERE slug = :slug
+            SELECT slug, marca, modelo, categoria, color, specs FROM inventory_motos WHERE slug = :slug
         """), {"slug": slug}).mappings().first()
         return dict(row) if row else None
 
@@ -63,14 +89,16 @@ def prepare_image(raw):
         return output.getvalue()
 
 
-def create_moto(brand, model, category, color, image):
+def create_moto(brand, model, category, color, image, *, price_cop=None, stock=0, specs=None):
     slug = "modelo-" + uuid4().hex
     client, bucket = storage()
     with database_engine().begin() as connection:
         connection.execute(text("""
-            INSERT INTO inventory_motos (slug, marca, modelo, categoria, color)
-            VALUES (:slug, :brand, :model, :category, :color)
-        """), dict(slug=slug, brand=brand, model=model, category=category, color=color))
+            INSERT INTO inventory_motos (slug, marca, modelo, categoria, color, specs)
+            VALUES (:slug, :brand, :model, :category, :color, CAST(:specs AS jsonb))
+        """), dict(slug=slug, brand=brand, model=model, category=category, color=color,
+                   specs=json.dumps(specs or {})))
+        sales.insert_offer(connection, slug, color, price_cop, stock)
         client.put_object(
             Bucket=bucket, Key=f"catalogo/{slug}.webp", Body=image, ContentType="image/webp",
             CacheControl="public, max-age=31536000, immutable",
@@ -78,17 +106,15 @@ def create_moto(brand, model, category, color, image):
     return slug
 
 
-def inventory_example(operation, value=""):
-    operations = {
-        "insert": "INSERT INTO inventory_example VALUES (1, :value) RETURNING modelo",
-        "update": "UPDATE inventory_example SET modelo = :value WHERE id = 1 RETURNING modelo",
-        "delete": "DELETE FROM inventory_example WHERE id = 1 RETURNING modelo",
-    }
+def inventory_example(operation, value="", *, target=None):
     with database_engine().begin() as connection:
         connection.execute(text("CREATE TEMP TABLE inventory_example (id int, modelo text) ON COMMIT DROP"))
         if operation != "insert":
             connection.execute(text("INSERT INTO inventory_example VALUES (1, 'Moto de ejemplo')"))
-        return connection.execute(text(operations[operation]), {"value": value}).scalar_one()
+        result = connection.execute(text(EXAMPLE_QUERIES[operation]), {"value": value}).scalar_one()
+        if target is not None:
+            describe_target(connection, "pg_temp.inventory_example", target)
+        return result
 
 
 if __name__ == "__main__":

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Accesorios para moto · Moto Garaje{% endblock %}
+{% block content %}
+<section class="gear-hero">
+  <div class="shell gear-hero-inner">
+    <div>
+      <h1>Accesorios<br>para moto</h1>
+      <p>Protección, equipaje y herramientas para tu próxima rodada.</p>
+      <a class="button" href="#productos">Explorar accesorios ↓</a>
+    </div>
+    <img src="{{ url_for('static', path='images/accessories/casco-integral.webp') }}" alt="Casco integral de acabado grafito" width="480" height="480" fetchpriority="high">
+  </div>
+</section>
+<section class="shell gear-shop" id="productos" aria-labelledby="gear-title">
+  <div class="section-head gear-section-head">
+    <h2 id="gear-title">Tienda de accesorios</h2>
+    <a class="button" href="{{ url_for('accessory_cart') }}" data-open-cart>Carrito <span data-cart-count>{{ cart_count }}</span> ↗</a>
+  </div>
+  <p class="subtle">Precios de demostración en pesos colombianos, IVA incluido.</p>
+  <div class="gear-toolbar">
+    <nav class="gear-tabs" aria-label="Categorías de accesorios">
+      <a href="{{ url_for('accessories').include_query_params(q=query) }}#productos" {% if not category %}aria-current="page"{% endif %}>Todos</a>
+      {% for key, label in categories.items() %}
+      <a href="{{ url_for('accessories').include_query_params(categoria=key, q=query) }}#productos" {% if category == key %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <form class="gear-search" method="get" action="{{ url_for('accessories') }}#productos">
+      {% if category %}<input type="hidden" name="categoria" value="{{ category }}">{% endif %}
+      <label class="visually-hidden" for="gear-search">Buscar accesorios</label>
+      <input id="gear-search" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="Buscar accesorios">
+      <button type="submit">Buscar</button>
+    </form>
+  </div>
+  {% if items %}
+  <p class="gear-result">{{ items|length }} {{ 'accesorio' if items|length == 1 else 'accesorios' }}</p>
+  <div class="gear-grid">
+    {% for item in items %}
+    <article class="gear-card">
+      <a href="{{ url_for('accessory_detail', sku=item.sku) }}" aria-label="Ver {{ item.name }}">
+        <img src="{{ url_for('static', path='images/accessories/' ~ item.sku ~ '.webp') }}" alt="" width="480" height="480" loading="lazy">
+      </a>
+      <div class="gear-card-body">
+        <p class="gear-category">{{ categories[item.category] }}</p>
+        <h3><a href="{{ url_for('accessory_detail', sku=item.sku) }}">{{ item.name }}</a></h3>
+        <p class="gear-description">{{ item.description }}</p>
+        <div class="gear-price"><strong>{{ price(item.price_cop) }}</strong><span>{{ item.stock ~ ' disponibles' if item.stock else 'Agotado' }}</span></div>
+        {% if item.variants|length > 1 %}
+        <a class="button" href="{{ url_for('accessory_detail', sku=item.sku) }}">Elegir talla <span aria-hidden="true">↗</span></a>
+        {% else %}
+        <form method="post" action="{{ url_for('accessory_cart_change') }}" data-quick-add>
+          <input type="hidden" name="sku" value="{{ item.sku }}">
+          <input type="hidden" name="quantity" value="1">
+          <input type="hidden" name="action" value="add">
+          <button class="button" type="submit" aria-label="Agregar {{ item.name }} al carrito" {% if not item.stock %}disabled{% endif %}>Agregar al carrito <span aria-hidden="true">+</span></button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty"><h2>No encontramos accesorios</h2><p>Prueba otra búsqueda o vuelve a ver todos los productos.</p><a class="text-link" href="{{ url_for('accessories') }}#productos">Limpiar filtros</a></div>
+  {% endif %}
+</section>
+{% endblock %}
