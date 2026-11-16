@@ -1,0 +1,106 @@
+const showroom = document.querySelector("[data-showroom]");
+if (showroom) {
+  const bike = showroom.querySelector("#warehouse-bike");
+  const status = showroom.querySelector("#finish-status");
+  const finishes = [...showroom.querySelectorAll(".finish")];
+  let selection = 0;
+
+  for (const button of finishes) {
+    button.addEventListener("click", async () => {
+      const request = ++selection;
+      const preview = new Image();
+      preview.src = button.dataset.image;
+      try {
+        await preview.decode();
+      } catch {
+        if (request === selection) status.textContent = "La imagen no pudo cargarse.";
+        return;
+      }
+      if (request !== selection) return;
+      bike.src = preview.src;
+      bike.alt = `${bike.dataset.model} · ${button.dataset.color}`;
+      status.textContent = `Acabado: ${button.dataset.color}`;
+      finishes.forEach((finish) => finish.setAttribute("aria-pressed", String(finish === button)));
+      bike.getAnimations().forEach((animation) => animation.cancel());
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        bike.animate([{ opacity: .35, transform: "translateX(8px)" }, { opacity: 1, transform: "none" }], 300);
+      }
+    });
+  }
+}
+
+const lab = document.querySelector("[data-lab]");
+if (lab) {
+  const form = lab.querySelector("form");
+  const method = form.elements.method;
+  const query = form.elements.query;
+  const note = form.elements.note;
+  const submit = form.querySelector("button");
+  const status = lab.querySelector("#lab-status");
+  const output = lab.querySelector("#lab-response");
+  const steps = [...lab.querySelectorAll("[data-step]")];
+  const actions = { GET: "Consulta", POST: "Creación de muestra", PATCH: "Edición de muestra", DELETE: "Eliminación de muestra" };
+  const requestPath = () => method.value === "GET" ? "/api/motos" : "/api/laboratorio/muestra";
+  const setStep = (index) => {
+    steps.forEach((step, i) => {
+      step.classList.toggle("completed", i < index);
+      step.classList.toggle("active", i === index);
+    });
+  };
+  const pause = () => new Promise((resolve) => setTimeout(resolve,
+    matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 240));
+
+  function updateControls() {
+    query.disabled = method.value !== "GET";
+    note.disabled = !["POST", "PATCH"].includes(method.value);
+    note.required = !note.disabled;
+    lab.querySelector("#lab-query").hidden = query.disabled;
+    lab.querySelector("#lab-payload").hidden = note.disabled;
+    lab.querySelector("#lab-path").textContent = requestPath();
+    steps[2].textContent = actions[method.value];
+    setStep(-1);
+  }
+
+  method.addEventListener("change", updateControls);
+  updateControls();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const verb = method.value;
+    const path = requestPath();
+    const url = new URL(path, location.origin);
+    const options = { method: verb, signal: AbortSignal.timeout(10000) };
+    if (!note.disabled) {
+      options.headers = { "Content-Type": "application/json" };
+      options.body = JSON.stringify({ nota: note.value });
+    }
+    if (verb === "GET" && query.value.trim()) url.searchParams.set("q", query.value.trim());
+
+    submit.disabled = true;
+    method.disabled = true;
+    status.textContent = `Enviando ${verb} ${url.pathname}${url.search}…`;
+    output.textContent = "—";
+    setStep(0);
+    const started = performance.now();
+    const result = fetch(url, options).then(async (response) => {
+      const elapsed = Math.round(performance.now() - started);
+      const body = response.status === 204 ? "Sin cuerpo" : JSON.stringify(await response.json(), null, 2);
+      return { status: response.status, body, elapsed };
+    }).catch(() => null);
+    await pause();
+    setStep(1);
+    await pause();
+    setStep(2);
+    const response = await result;
+    await pause();
+    if (response) {
+      setStep(3);
+      status.textContent = `HTTP ${response.status} · ${response.elapsed} ms`;
+      output.textContent = response.body;
+    } else {
+      setStep(-1);
+      status.textContent = "No se pudo completar la petición. Intenta de nuevo.";
+    }
+    submit.disabled = false;
+    method.disabled = false;
+  });
+}

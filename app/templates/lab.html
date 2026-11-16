@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Laboratorio API · Moto Garaje{% endblock %}
+{% block content %}
+<section class="shell page lab" data-lab>
+  <div class="lab-head">
+    <div><h1>Laboratorio API</h1><p>Ejecuta una petición y sigue su recorrido hasta la respuesta de FastAPI.</p></div>
+    <a class="button" href="{{ url_for('swagger_ui_html') }}">Abrir Swagger UI ↗</a>
+  </div>
+  <div class="lab-grid">
+    <form class="lab-panel lab-form">
+      <h2>Petición</h2>
+      <label>Método
+        <select name="method">
+          <option value="GET">GET · Consultar catálogo</option>
+          <option value="POST">POST · Simular creación</option>
+          <option value="PATCH">PATCH · Simular actualización</option>
+          <option value="DELETE">DELETE · Simular eliminación</option>
+        </select>
+      </label>
+      <code id="lab-path">/api/motos</code>
+      <label id="lab-query">Buscar modelo
+        <input name="query" placeholder="Ej. Duke" maxlength="100">
+      </label>
+      <label id="lab-payload" hidden>Nota de prueba
+        <input name="note" maxlength="140" value="Moto de demostración" disabled>
+      </label>
+      <button class="button" type="submit">Enviar petición →</button>
+      <p>Las escrituras del laboratorio se simulan sin persistencia.</p>
+    </form>
+    <div class="lab-panel lab-console">
+      <h2>Recorrido y respuesta</h2>
+      <ol class="api-flow" aria-label="Recorrido de la petición">
+        <li data-step="0">Navegador</li>
+        <li data-step="1">FastAPI</li>
+        <li data-step="2" id="lab-handler">Consulta</li>
+        <li data-step="3">Respuesta</li>
+      </ol>
+      <p id="lab-status" role="status">Esperando una petición.</p>
+      <pre id="lab-response" aria-label="Cuerpo de la respuesta" tabindex="0">—</pre>
+    </div>
+  </div>
+</section>
+{% endblock %}
